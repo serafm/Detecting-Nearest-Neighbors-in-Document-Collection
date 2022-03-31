@@ -10,7 +10,10 @@ def MyReadDataRoutine():
     #numDocuments = sys.argv[2]
 
     file = open("data/DATA_1-docword.enron.txt")
-    numDocuments = 100
+    numDocuments = 5
+    docs = 1
+    docID = 1
+    nextDocID = 1
 
     data = file.read()
     data = data.split("\n")
@@ -23,10 +26,23 @@ def MyReadDataRoutine():
     frozenData = []
 
     for i in range(len(data)-1):
+
+        if docs > numDocuments:
+            break
+
         list = data[i].split(" ")
         docID = list[0]
         wordID = list[1]
-        frozenData = frozenData + [docID, wordID]
+        frozenData = frozenData + [(docID, wordID)]
+
+        if nextDocID < int(docID):
+            docs += 1
+
+        nextDocID = int(docID)
+
+    frozenData.pop(-1)
+    frozenData.pop(-1)
+    print(frozenData)
 
     frozeSet = frozenset(frozenData)
     print(frozeSet)
