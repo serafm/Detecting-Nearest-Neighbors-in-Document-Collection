@@ -10,3 +10,4 @@ def MyReadDataRoutine():
     dataFilePath = "data/DATA_1-vocab.enron.txt"
     numDocuments = 100
 
+
