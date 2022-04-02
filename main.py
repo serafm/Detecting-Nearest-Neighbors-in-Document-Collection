@@ -68,16 +68,13 @@ def MyReadDataRoutine():
 
     # get the execution time
     elapsed_time = et - st
-    print('Execution time:', elapsed_time, 'seconds')
+    print('Read ', numDocuments, ' and put in dictionary execution time:', elapsed_time, 'seconds \n')
 
 
 def MyJacSimWithSets(docID1, docID2):
-    """ fast way
-    docInDict1 = docDict.get(docID1)
-    docInDict2 = docDict.get(docID2)
-    return len(set(docInDict1).intersection(docInDict2)) / len(set(docInDict1).union(docInDict2))
-    """
+
     intersectionCounter = 0
+    # make frozensets for the 2 docs
     doc1set = frozenset(docDict.get(docID1))
     doc2set = frozenset(docDict.get(docID2))
 
@@ -88,49 +85,57 @@ def MyJacSimWithSets(docID1, docID2):
 
     unionCounter = (len(doc1set) + len(doc2set)) - intersectionCounter
 
+    # Jaccard Similarity
     jacSim = intersectionCounter / unionCounter
 
-    print("Intersection1= ", intersectionCounter)
-    print("Union1= ", unionCounter)
+    print("MyJacSimWithSets")
+    print("Intersection=", intersectionCounter)
+    print("Union=", unionCounter)
+
     return jacSim
 
 
 def MyJacSimWithOrderedLists(docID1, docID2):
+
     pos1 = 0
     pos2 = 0
-    intersectionCounter = 0
+    intersectionCounter2 = 0
 
+    # make lists for the 2 docs
     doc1List = list(docDict.get(docID1))
     doc2List = list(docDict.get(docID2))
     sizeOfDoc1 = len(doc1List)
     sizeOfDoc2 = len(doc2List)
 
-    while pos1 < sizeOfDoc1 and sizeOfDoc2 < pos2:
-        if doc1List[pos1] == doc2List[pos2]:
-            intersectionCounter += 1
+    while pos1 < sizeOfDoc1 and pos2 < sizeOfDoc2:
+        if int(doc1List[pos1]) == int(doc2List[pos2]):
+            intersectionCounter2 += 1
             pos1 += 1
             pos2 += 1
         else:
-            if doc1List[pos1] < doc2List[pos2]:
+            if int(doc1List[pos1]) < int(doc2List[pos2]):
                 pos1 += 1
             else:
                 pos2 += 1
 
-    unionCounter = (sizeOfDoc1 + sizeOfDoc2) - intersectionCounter
+    unionCounter2 = (sizeOfDoc1 + sizeOfDoc2) - intersectionCounter2
 
-    jacSim = intersectionCounter / unionCounter
+    # Jaccard Similarity
+    jacSim2 = intersectionCounter2 / unionCounter2
 
-    print("Intersection2= ", intersectionCounter)
-    print("Union2= ", unionCounter)
-    return jacSim
+    print("MyJacSimWithOrderedLists")
+    print("Intersection=", intersectionCounter2)
+    print("Union=", unionCounter2)
+
+    return jacSim2
 
 
 def main():
     MyReadDataRoutine()
-    jac1 = MyJacSimWithSets(1000, 222)
-    print("JacSim1= ", jac1)
-    jac2 = MyJacSimWithOrderedLists(1000, 222)
-    print("JacSim2= ", jac2)
+    jac1 = MyJacSimWithSets(1231, 1900)
+    print("JacSim= ", jac1, "\n")
+    jac2 = MyJacSimWithOrderedLists(1231, 1900)
+    print("JacSim= ", jac2)
 
 
 if __name__ == "__main__":
