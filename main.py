@@ -1,36 +1,31 @@
 import sys
+import time
 
+global docDict
+docDict = dict()
 
-def listToString(s):
-    # initialize an empty string
-    str1 = ""
-
-    # traverse in the string
-    for ele in s:
-        str1 += ele
-
-        # return string
-    return str1
 
 def MyReadDataRoutine():
-
     # Get the file path and num of docs from terminal
-    #dataFilePath = sys.argv[1]
-    #numDocuments = sys.argv[2]
+    # file = sys.argv[1]
+    # numDocuments = sys.argv[2]
+
+    # get the start time
+    st = time.time()
 
     # file to read the data
     file = open("data/DATA_1-docword.enron.txt")
 
-    # new file to write later
-    newFile = open("FrozenDataSet.txt", "w")
-
     # number of documents to read
-    numDocuments = 10
+    numDocuments = 2000
 
     docs = 1
     previousDocID = 1
 
+    # read the file
     data = file.read()
+
+    # split with space
     data = data.split("\n")
 
     # remove the first 3 lines we don't need them here
@@ -38,10 +33,14 @@ def MyReadDataRoutine():
     data.pop(0)
     data.pop(0)
 
-    frozenData = []
-    string = []
+    # number of key in the dictionary (docID)
+    k = 1
 
-    for i in range(len(data)-1):
+    # set the dictionary with keys
+    for docId in range(1, numDocuments + 1):
+        docDict[docId] = []
+
+    for i in range(len(data) - 1):
 
         # if we pass the number of documents we want to read then stop
         if docs > numDocuments:
@@ -52,11 +51,8 @@ def MyReadDataRoutine():
         docID = list[0]
         wordID = list[1]
 
-        # we need it to write after in file
-        string = string + [docID + " : " + wordID + "\n"]
-
-        # add tuple of docID and wordID in list
-        frozenData = frozenData + [(docID, wordID)]
+        if int(docID) > k:
+            k += 1
 
         # check if we changed docID then increase the docs number to check it for the next
         if previousDocID < int(docID):
@@ -64,26 +60,30 @@ def MyReadDataRoutine():
 
         previousDocID = int(docID)
 
+        if k < numDocuments + 1:
+            docDict[k].append(wordID)
 
-    # remove the last tuple from list because its not in range of the number of documents
-    frozenData.pop(-1)
+    # get the end time
+    et = time.time()
 
-    # convert list of tuples to frozenset
-    frozenSet = frozenset(frozenData)
+    # get the execution time
+    elapsed_time = et - st
+    print('Execution time:', elapsed_time, 'seconds')
 
-    # no need we remove the last element
-    string.pop(-1)
 
-    # convert list to string to save it in file
-    fstring = listToString(string)
+def MyJacSimWithSets(docID1, docID2):
+    """ fast way
+    docInDict1 = docDict.get(docID1)
+    docInDict2 = docDict.get(docID2)
+    return len(set(docInDict1).intersection(docInDict2)) / len(set(docInDict1).union(docInDict2))
+    """
 
-    # write the string in file
-    newFile.write(fstring)
 
 
 
 def main():
     MyReadDataRoutine()
+
 
 if __name__ == "__main__":
     main()
