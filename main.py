@@ -1,8 +1,16 @@
+import math
 import sys
 import time
+import random
 
 global docDict
 docDict = dict()
+
+
+def create_random_hash_function(p=2 ** 33 - 355, m=2 ** 32 - 1):
+    a = random.randint(1, p - 1)
+    b = random.randint(0, p - 1)
+    return lambda x: 1 + (((a * x + b) % p) % m)
 
 
 def MyReadDataRoutine():
@@ -17,7 +25,7 @@ def MyReadDataRoutine():
     file = open("data/DATA_1-docword.enron.txt")
 
     # number of documents to read
-    numDocuments = 2000
+    numDocuments = 1000
 
     docs = 1
     previousDocID = 1
@@ -34,7 +42,7 @@ def MyReadDataRoutine():
     data.pop(0)
 
     # number of key in the dictionary (docID)
-    k = 1
+    k = 0
 
     # set the dictionary with keys
     for docId in range(1, numDocuments + 1):
@@ -68,10 +76,13 @@ def MyReadDataRoutine():
 
     # get the execution time
     elapsed_time = et - st
-    print('Read ', numDocuments, ' and put in dictionary execution time:', elapsed_time, 'seconds \n')
+    print('Read ', numDocuments, ' and added them in dictionary. Execution time:', '%.3f' % elapsed_time, 'seconds \n')
 
 
 def MyJacSimWithSets(docID1, docID2):
+
+    # get the start time
+    st = time.time()
 
     intersectionCounter = 0
     # make frozensets for the 2 docs
@@ -92,10 +103,20 @@ def MyJacSimWithSets(docID1, docID2):
     print("Intersection=", intersectionCounter)
     print("Union=", unionCounter)
 
+    # get the end time
+    et = time.time()
+
+    # get the execution time
+    elapsed_time = et - st
+    print('Execution time:', '%.3f' % elapsed_time, 'seconds')
+
     return jacSim
 
 
 def MyJacSimWithOrderedLists(docID1, docID2):
+
+    # get the start time
+    st = time.time()
 
     pos1 = 0
     pos2 = 0
@@ -127,16 +148,40 @@ def MyJacSimWithOrderedLists(docID1, docID2):
     print("Intersection=", intersectionCounter2)
     print("Union=", unionCounter2)
 
+    # get the end time
+    et = time.time()
+
+    # get the execution time
+    elapsed_time = et - st
+    print('Execution time:', '%.3f' % elapsed_time, 'seconds')
+
     return jacSim2
+
+
+def myMinHash():
+
+    """
+    f = open("MyHash.txt", "w")
+
+    h = create_random_hash_function()
+    randomHash = {x: h(x) for x in range(28102)}
+
+    myHashKeysOrderedByValues = sorted(randomHash, key=randomHash.get)
+    myHash = {myHashKeysOrderedByValues[x]: x for x in range(28102)}
+
+    for i in myHash:
+        string = str(i) + ":" + str(myHash[i]) + "\n"
+        f.write(string)
+        string = ""
+    """
 
 
 def main():
     MyReadDataRoutine()
-    jac1 = MyJacSimWithSets(1231, 1900)
+    jac1 = MyJacSimWithSets(1, 2)
     print("JacSim= ", jac1, "\n")
-    jac2 = MyJacSimWithOrderedLists(1231, 1900)
+    jac2 = MyJacSimWithOrderedLists(1, 2)
     print("JacSim= ", jac2)
-
 
 if __name__ == "__main__":
     main()
