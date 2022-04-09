@@ -1,10 +1,11 @@
-import math
 import sys
 import time
 import random
+import collections
 
 global docDict
 docDict = dict()
+wordDict = dict()
 
 
 def create_random_hash_function(p=2 ** 33 - 355, m=2 ** 32 - 1):
@@ -25,7 +26,7 @@ def MyReadDataRoutine():
     file = open("data/DATA_1-docword.enron.txt")
 
     # number of documents to read
-    numDocuments = 1000
+    numDocuments = 2
 
     docs = 1
     previousDocID = 1
@@ -70,6 +71,16 @@ def MyReadDataRoutine():
 
         if k < numDocuments + 1:
             docDict[k].append(wordID)
+
+            # add docIDs in wordIDs dictionary
+            if int(wordID) in wordDict:
+                wordDict[int(wordID)].append(int(docID))
+            else:
+                wordDict[int(wordID)] = []
+                wordDict[int(wordID)].append(int(docID))
+
+    sortedWordDict = collections.OrderedDict(sorted(wordDict.items()))
+    print(sortedWordDict)
 
     # get the end time
     et = time.time()
