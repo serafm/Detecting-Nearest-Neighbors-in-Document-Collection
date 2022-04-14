@@ -1,11 +1,13 @@
-import sys
+import linecache
 import time
 import random
 import collections
 
-global docDict
+global docDict, numDocuments, wordDict, SIG
 docDict = dict()
 wordDict = dict()
+numDocuments = 10
+SIG = []
 
 
 def create_random_hash_function(p=2 ** 33 - 355, m=2 ** 32 - 1):
@@ -19,6 +21,9 @@ def MyReadDataRoutine():
     # file = sys.argv[1]
     # numDocuments = sys.argv[2]
 
+    global numDocuments
+    global wordDict
+
     # get the start time
     st = time.time()
 
@@ -26,7 +31,9 @@ def MyReadDataRoutine():
     file = open("data/DATA_1-docword.enron.txt")
 
     # number of documents to read
-    numDocuments = 2
+    # numDocuments = 5
+
+
 
     docs = 1
     previousDocID = 1
@@ -80,14 +87,14 @@ def MyReadDataRoutine():
                 wordDict[int(wordID)].append(int(docID))
 
     sortedWordDict = collections.OrderedDict(sorted(wordDict.items()))
-    print(sortedWordDict)
+    print(wordDict)
 
     # get the end time
     et = time.time()
 
     # get the execution time
     elapsed_time = et - st
-    print('Read ', numDocuments, ' and added them in dictionary. Execution time:', '%.3f' % elapsed_time, 'seconds \n')
+    print('Read ', numDocuments, ' and added them in dictionary. Execution time:', '%.3f' % elapsed_time, 'seconds for MyReadDataRoutine \n')
 
 
 def MyJacSimWithSets(docID1, docID2):
@@ -119,7 +126,7 @@ def MyJacSimWithSets(docID1, docID2):
 
     # get the execution time
     elapsed_time = et - st
-    print('Execution time:', '%.3f' % elapsed_time, 'seconds')
+    print('Execution time:', '%.3f' % elapsed_time, 'seconds for MyJacSimWithSets')
 
     return jacSim
 
@@ -164,27 +171,97 @@ def MyJacSimWithOrderedLists(docID1, docID2):
 
     # get the execution time
     elapsed_time = et - st
-    print('Execution time:', '%.3f' % elapsed_time, 'seconds')
+    print('Execution time:', '%.3f' % elapsed_time, 'seconds for MyJacSimWithOrderedLists')
 
     return jacSim2
 
 
-def myMinHash():
-
+def MyMinHash(wordDict):
     """
-    f = open("MyHash.txt", "w")
+    w = len(wordDict)
+    f = open("MyHash10.txt", "w")
 
     h = create_random_hash_function()
-    randomHash = {x: h(x) for x in range(28102)}
+    randomHash = {x: h(x) for x in range(w)}
 
     myHashKeysOrderedByValues = sorted(randomHash, key=randomHash.get)
-    myHash = {myHashKeysOrderedByValues[x]: x for x in range(28102)}
+    myHash = {myHashKeysOrderedByValues[x]: x for x in range(w)}
 
     for i in myHash:
         string = str(i) + ":" + str(myHash[i]) + "\n"
         f.write(string)
         string = ""
     """
+    
+    # get the start time
+    st = time.time()
+
+    global numDocuments, SIG
+    k = 7
+    hashFile = ["MyHash1.txt", "MyHash2.txt", "MyHash3.txt", "MyHash4.txt", "MyHash5.txt", "MyHash6.txt", "MyHash7.txt", "MyHash8.txt", "MyHash9.txt", "MyHash10.txt"]
+
+    randomHash = []
+    randomHashList = [[]]
+
+    for hash in range(k):
+        for i in range(1, len(wordDict)):
+            randomHash.append(linecache.getline(str(hashFile[hash]), i).replace("\n", "").replace(str(":" + str(i-1)), ""))
+        randomHashList.append(randomHash)
+        randomHash = []
+    randomHashList.pop(0)
+
+    thesiPinaka = 1
+    pos = 0
+
+    for col in range(numDocuments):
+        SIG.append([])
+        for i in range(k):
+            SIG[col].append(1000000)
+
+    for word in wordDict:
+        list = wordDict.get(word)
+        for doc in range(len(list)):
+            for j in range(k):
+                for i in range(len(randomHashList[0])):
+                    if thesiPinaka == int(randomHashList[j][i]):
+                        if (i + 1) < SIG[int(list[pos]) - 1][j]:
+                            SIG[int(list[pos]) - 1][j] = i + 1
+                            break
+            pos += 1
+        thesiPinaka += 1
+        pos = 0
+
+    # get the end time
+    et = time.time()
+
+    # get the execution time
+    elapsed_time = et - st
+    print('Execution time:', '%.3f' % elapsed_time, 'seconds for MyMinHash')
+
+    print(SIG)
+
+
+def MySigSim(docID1, docID2, numPermutations):
+    # get the start time
+    st = time.time()
+
+    count = 0
+    docSig1 = SIG[docID1-1]
+    docSig2 = SIG[docID2-1]
+
+    for i in range(numPermutations):
+        if docSig1[i] == docSig2[i]:
+            count += 1
+
+    sigSim = count/numPermutations
+
+    # get the end time
+    et = time.time()
+
+    # get the execution time
+    elapsed_time = et - st
+    print('\nExecution time:', '%.3f' % elapsed_time, 'seconds for MySigSim')
+    print("\nSigSim= ", sigSim)
 
 
 def main():
@@ -193,6 +270,9 @@ def main():
     print("JacSim= ", jac1, "\n")
     jac2 = MyJacSimWithOrderedLists(1, 2)
     print("JacSim= ", jac2)
+    print("\n")
+    MyMinHash(wordDict)
+    MySigSim(2, 5, 7)
 
 if __name__ == "__main__":
     main()
