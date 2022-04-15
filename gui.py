@@ -2,13 +2,13 @@ import linecache
 import time
 import random
 import collections
+from tkinter import *
+from tkinter.ttk import *
+from tkinter.filedialog import askopenfile
 
-global docDict, numDocuments, wordDict, SIG, file_path, readMsg, myNeighborsDict, docDistance, K
+global docDict, numDocuments, wordDict, SIG, file_path, readMsg
 docDict = dict()
-K = 7
 wordDict = dict()
-myNeighborsDict = dict()
-docDistance = dict()
 numDocuments = 10
 SIG = []
 
@@ -19,12 +19,12 @@ def create_random_hash_function(p=2 ** 33 - 355, m=2 ** 32 - 1):
     return lambda x: 1 + (((a * x + b) % p) % m)
 
 
-def MyReadDataRoutine():
+def MyReadDataRoutine(filepath):
     global numDocuments, readMsg, wordDict
 
     # get the start time
     st = time.time()
-    filepath = "data/DATA_1-docword.enron.txt"
+
     # file to read the data
     file = open(filepath)
 
@@ -93,6 +93,9 @@ def MyReadDataRoutine():
 
 
 def MyJacSimWithSets(docID1, docID2):
+    # get the start time
+    st = time.time()
+
     intersectionCounter = 0
     # make frozensets for the 2 docs
     doc1set = frozenset(docDict.get(docID1))
@@ -108,10 +111,24 @@ def MyJacSimWithSets(docID1, docID2):
     # Jaccard Similarity
     jacSim = intersectionCounter / unionCounter
 
+    print("MyJacSimWithSets")
+    print("Intersection=", intersectionCounter)
+    print("Union=", unionCounter)
+
+    # get the end time
+    et = time.time()
+
+    # get the execution time
+    elapsed_time = et - st
+    print('Execution time:', '%.3f' % elapsed_time, 'seconds for MyJacSimWithSets')
+
     return jacSim
 
 
 def MyJacSimWithOrderedLists(docID1, docID2):
+    # get the start time
+    st = time.time()
+
     pos1 = 0
     pos2 = 0
     intersectionCounter2 = 0
@@ -138,6 +155,17 @@ def MyJacSimWithOrderedLists(docID1, docID2):
     # Jaccard Similarity
     jacSim2 = intersectionCounter2 / unionCounter2
 
+    print("MyJacSimWithOrderedLists")
+    print("Intersection=", intersectionCounter2)
+    print("Union=", unionCounter2)
+
+    # get the end time
+    et = time.time()
+
+    # get the execution time
+    elapsed_time = et - st
+    print('Execution time:', '%.3f' % elapsed_time, 'seconds for MyJacSimWithOrderedLists')
+
     return jacSim2
 
 
@@ -162,13 +190,14 @@ def MyMinHash(wordDict):
     st = time.time()
 
     global numDocuments, SIG
+    k = 7
     hashFile = ["MyHash1.txt", "MyHash2.txt", "MyHash3.txt", "MyHash4.txt", "MyHash5.txt", "MyHash6.txt", "MyHash7.txt",
                 "MyHash8.txt", "MyHash9.txt", "MyHash10.txt"]
 
     randomHash = []
     randomHashList = [[]]
 
-    for hash in range(K):
+    for hash in range(k):
         for i in range(1, len(wordDict)):
             randomHash.append(
                 linecache.getline(str(hashFile[hash]), i).replace("\n", "").replace(str(":" + str(i - 1)), ""))
@@ -181,13 +210,13 @@ def MyMinHash(wordDict):
 
     for col in range(numDocuments):
         SIG.append([])
-        for i in range(K):
+        for i in range(k):
             SIG[col].append(1000000)
 
     for word in wordDict:
         list = wordDict.get(word)
         for doc in range(len(list)):
-            for j in range(K):
+            for j in range(k):
                 for i in range(len(randomHashList[0])):
                     if thesiPinaka == int(randomHashList[j][i]):
                         if (i + 1) < SIG[int(list[pos]) - 1][j]:
@@ -204,8 +233,13 @@ def MyMinHash(wordDict):
     elapsed_time = et - st
     print('Execution time:', '%.3f' % elapsed_time, 'seconds for MyMinHash')
 
+    print(SIG)
+
 
 def MySigSim(docID1, docID2, numPermutations):
+    # get the start time
+    st = time.time()
+
     count = 0
     docSig1 = SIG[docID1 - 1]
     docSig2 = SIG[docID2 - 1]
@@ -216,74 +250,70 @@ def MySigSim(docID1, docID2, numPermutations):
 
     sigSim = count / numPermutations
 
-    return sigSim
+    # get the end time
+    et = time.time()
+
+    # get the execution time
+    elapsed_time = et - st
+    print('\nExecution time:', '%.3f' % elapsed_time, 'seconds for MySigSim')
+    print("\nSigSim= ", sigSim)
 
 
-def NearestNeighbors(docID):
-    global docDistance
-    numNeighbors = 5
-    i = 0
-    SigSimList = []
-    JacSimList = []
+def GUI():
+    mainWindow = Tk()
+    mainWindow.title('Detect Nearest Neighbors from Document Collection')
+    mainWindow.geometry('600x600')
 
-    for d in range(1, numDocuments + 1):
-        if d != docID:
-            SigSimList.append(MySigSim(docID, d, K))
-            JacSimList.append(MyJacSimWithOrderedLists(docID, d))
-            distance = 1 - MyJacSimWithOrderedLists(docID, d)
-            if d not in docDistance:
-                docDistance[d] = distance
+    def open_file():
+        global file_path
+        file_path = askopenfile(mode='r', filetypes=[("Text Files", "*.txt")])
+        filepath = str(file_path).replace("<_io.TextIOWrapper name='", "").replace("' mode='r' encoding='cp1253'>", "")
 
-    orderedDistanceDict = {k: v for k, v in sorted(docDistance.items(), key=lambda item: item[1])}
+        if file_path is None:
+            pass
 
-    for doc in orderedDistanceDict:
-        if i < numNeighbors:
-            myNeighborsDict[doc] = JacSimList[doc - 2]
-            i += 1
+        progressBar = Progressbar(mainWindow, orient=HORIZONTAL, length=300, mode='determinate')
+        progressBar.grid(row=1, columnspan=3, pady=20)
 
-    return myNeighborsDict
+        for i in range(5):
+            mainWindow.update_idletasks()
+            progressBar['value'] += 20
+            time.sleep(0.2)
 
+        progressBar.destroy()
+        Label(mainWindow, text='File Uploaded Successfully!', foreground='green').grid(row=1, columnspan=3, pady=10)
 
-def BruteForce():
-    AvgSimList = []
-    tempDict = dict()
-    numNeighbors = 5
-    sum = 0
-    allDocAvg = 0
+        MyReadDataRoutine(filepath)
+        readMsgLabel = Label(mainWindow, text=readMsg)
+        readMsgLabel.grid(row=2, column=0)
 
-    for i in range(1, numDocuments + 1):
-        tempDict = NearestNeighbors(i)
-        for doc in tempDict:
-            sum = sum + tempDict.get(doc)
-        tempAvg = sum / numNeighbors
-        allDocAvg += tempAvg
-        AvgSimList.append(tempAvg)
-        sum = 0
+        jac1 = MyJacSimWithSets(1, 2)
+        jaccardSimWithSetsLabel1 = Label(mainWindow, text="Jaccard Similarity with sets:")
+        jaccardSimWithSetsLabel1.grid(row=3, column=0)
+        jaccardSimWithSetsLabel2 = Label(mainWindow, text=jac1)
+        jaccardSimWithSetsLabel2.grid(row=3, column=1)
 
-    AvgSim = allDocAvg/numDocuments
+        jac2 = MyJacSimWithOrderedLists(1, 2)
+        jaccardSimWithOrderedListsLabel1 = Label(mainWindow, text="Jaccard Similarity with ordered lists:")
+        jaccardSimWithOrderedListsLabel1.grid(row=4, column=0)
+        jaccardSimWithOrderedListsLabel2 = Label(mainWindow, text=jac2)
+        jaccardSimWithOrderedListsLabel2.grid(row=4, column=1)
 
-    return AvgSim
+        MyMinHash(wordDict)
+        MySigSim(2, 5, 7)
 
+    uploadFileLabel = Label(mainWindow, text='Upload file to analyze')
+    uploadFileLabel.grid(row=0, column=0, padx=10)
+    uploadFileLabel.config(font=("Arial", 12, "bold"))
 
-def LSH(rowsPerBands):
-    numBands = K/rowsPerBands
+    uploadFileButton = Button(mainWindow, text='Choose File', command=lambda: open_file())
+    uploadFileButton.grid(row=0, column=1)
 
-
+    mainWindow.mainloop()
 
 
 def main():
-    MyReadDataRoutine()
-    print(readMsg, "\n")
-
-    MyJacSimWithSets(1, 2)
-    MyJacSimWithOrderedLists(1, 2)
-
-    MyMinHash(wordDict)
-
-    MySigSim(2, 5, 7)
-
-    avg = BruteForce()
-    print("AVG=", avg)
+    GUI()
 
 
 if __name__ == "__main__":
