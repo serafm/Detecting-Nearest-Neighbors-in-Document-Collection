@@ -374,7 +374,7 @@ def main():
     print("Jaccard: ", MyJacSimWithSets(1, 2))
     # print("Jaccard: ", MyJacSimWithOrderedLists(1, 2))
 
-    # RandomHashForSignatures()
+    #RandomHashForSignatures()
     MyMinHash(wordsDict)
 
     print("Sig: ", MySigSim(1, 2, 10))
