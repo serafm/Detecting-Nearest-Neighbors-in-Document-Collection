@@ -1,31 +1,56 @@
 import linecache
+import os
 import time
 import random
 import collections
 
-global docDict, numDocuments, wordDict, SIG, file_path, readMsg, myNeighborsDict, docDistance, K
+global docDict, numDocuments, wordsDict, SIG, file_path, readMsg, myNeighborsDict, docDistance, K, LSHdicts, permutationFileNames, hashLSH, numBands, rowsPerBand
+
+# Dictionary key:docID, value:wordIDs
 docDict = dict()
-K = 7
-wordDict = dict()
+
+LSHdicts = []
+
+# Dictionary key:wordID, value:docIDs
+wordsDict = dict()
+
+# Dictionary key:docID, value:Similarity
 myNeighborsDict = dict()
+
+# Dictionary key:docID, value:distance from a docID
 docDistance = dict()
+
+# Number of documents to read
 numDocuments = 10
+
+# Number of permutation
+K = 10
+
+# List of Signatures
 SIG = []
 
 
+# Random Hash Function
 def create_random_hash_function(p=2 ** 33 - 355, m=2 ** 32 - 1):
     a = random.randint(1, p - 1)
     b = random.randint(0, p - 1)
     return lambda x: 1 + (((a * x + b) % p) % m)
 
 
+hashLSH = create_random_hash_function()
+
+
+# Function to read the documents
 def MyReadDataRoutine():
-    global numDocuments, readMsg, wordDict
+    global numDocuments, readMsg, wordsDict
 
     # get the start time
     st = time.time()
+
+    # filepath
     filepath = "data/DATA_1-docword.enron.txt"
-    # file to read the data
+
+    # open file
     file = open(filepath)
 
     docs = 1
@@ -45,10 +70,11 @@ def MyReadDataRoutine():
     # number of key in the dictionary (docID)
     k = 0
 
-    # set the dictionary with keys
+    # set the dictionary with keys and value an empty list
     for docId in range(1, numDocuments + 1):
         docDict[docId] = []
 
+    # Add documents in dictionary
     for i in range(len(data) - 1):
 
         # if we pass the number of documents we want to read then stop
@@ -60,6 +86,7 @@ def MyReadDataRoutine():
         docID = list[0]
         wordID = list[1]
 
+        # check if we changed docID
         if int(docID) > k:
             k += 1
 
@@ -69,17 +96,19 @@ def MyReadDataRoutine():
 
         previousDocID = int(docID)
 
+        # if the docID we read now is not bigger the the number of documents then add it in the dictionary
         if k < numDocuments + 1:
             docDict[k].append(wordID)
 
             # add docIDs in wordIDs dictionary
-            if int(wordID) in wordDict:
-                wordDict[int(wordID)].append(int(docID))
+            if int(wordID) in wordsDict:
+                wordsDict[int(wordID)].append(int(docID))
             else:
-                wordDict[int(wordID)] = []
-                wordDict[int(wordID)].append(int(docID))
+                wordsDict[int(wordID)] = []
+                wordsDict[int(wordID)].append(int(docID))
 
-    sortedWordDict = collections.OrderedDict(sorted(wordDict.items()))
+    # Sorted dictionary wordsDict
+    sortedWordsDict = collections.OrderedDict(sorted(wordsDict.items()))
 
     # get the end time
     et = time.time()
@@ -90,8 +119,10 @@ def MyReadDataRoutine():
 
     readMsg = str('Read ' + str(numDocuments) + ' documents and added them in dictionary. Execution time: ' + str(
         timeTaken) + ' seconds for MyReadDataRoutine')
+    print("DocDict:\n", docDict)
 
 
+# Jaccard Similarity of 2 Documents with double for-loop
 def MyJacSimWithSets(docID1, docID2):
     intersectionCounter = 0
     # make frozensets for the 2 docs
@@ -111,6 +142,7 @@ def MyJacSimWithSets(docID1, docID2):
     return jacSim
 
 
+# Jaccard Similarity of 2 Documents with pointers
 def MyJacSimWithOrderedLists(docID1, docID2):
     pos1 = 0
     pos2 = 0
@@ -141,37 +173,51 @@ def MyJacSimWithOrderedLists(docID1, docID2):
     return jacSim2
 
 
-def MyMinHash(wordDict):
-    """
-    w = len(wordDict)
-    f = open("MyHash10.txt", "w")
+# Random Hash Function for Permutations
+def RandomHashForSignatures():
+    w = len(wordsDict)
+    permutationFiles = open("permutationFiles.txt", "w")
 
-    h = create_random_hash_function()
-    randomHash = {x: h(x) for x in range(w)}
+    for num in range(1, K + 1):
+        h = create_random_hash_function()
+        randomHash = {x: h(x) for x in range(w)}
+        myHashKeysOrderedByValues = sorted(randomHash, key=randomHash.get)
+        myHash = {myHashKeysOrderedByValues[x]: x for x in range(w)}
 
-    myHashKeysOrderedByValues = sorted(randomHash, key=randomHash.get)
-    myHash = {myHashKeysOrderedByValues[x]: x for x in range(w)}
+        filename = "randomHash" + str(num) + ".txt"
+        if os.path.exists(filename):
+            open(filename).flush()
+        permutationFiles.write(filename + "\n")
+        f = open(filename, "w")
+        for i in myHash:
+            string = str(i) + ":" + str(myHash[i]) + "\n"
+            f.write(string)
 
-    for i in myHash:
-        string = str(i) + ":" + str(myHash[i]) + "\n"
-        f.write(string)
-        string = ""
-    """
 
+# Create the Signature List
+def MyMinHash(wordsDict):
     # get the start time
     st = time.time()
 
-    global numDocuments, SIG
-    hashFile = ["MyHash1.txt", "MyHash2.txt", "MyHash3.txt", "MyHash4.txt", "MyHash5.txt", "MyHash6.txt", "MyHash7.txt",
-                "MyHash8.txt", "MyHash9.txt", "MyHash10.txt"]
+    global numDocuments, SIG, permutationFileNames
+
+    # Open the file with the randomHash file names
+    permutationFiles = open("permutationFiles.txt")
+
+    # Add the file names in a list
+    permutationFileNames = permutationFiles.read().split("\n")
+
+    # remove the last element (is an empty string)
+    permutationFileNames.pop(-1)
 
     randomHash = []
     randomHashList = [[]]
 
     for hash in range(K):
-        for i in range(1, len(wordDict)):
+        for i in range(1, len(wordsDict)):
             randomHash.append(
-                linecache.getline(str(hashFile[hash]), i).replace("\n", "").replace(str(":" + str(i - 1)), ""))
+                linecache.getline(str(permutationFileNames[hash]), i).replace("\n", "").replace(str(":" + str(i - 1)),
+                                                                                                ""))
         randomHashList.append(randomHash)
         randomHash = []
     randomHashList.pop(0)
@@ -184,8 +230,8 @@ def MyMinHash(wordDict):
         for i in range(K):
             SIG[col].append(1000000)
 
-    for word in wordDict:
-        list = wordDict.get(word)
+    for word in wordsDict:
+        list = wordsDict.get(word)
         for doc in range(len(list)):
             for j in range(K):
                 for i in range(len(randomHashList[0])):
@@ -202,9 +248,11 @@ def MyMinHash(wordDict):
 
     # get the execution time
     elapsed_time = et - st
-    print('Execution time:', '%.3f' % elapsed_time, 'seconds for MyMinHash')
+    print('Execution time:', '%.3f' % elapsed_time, 'seconds for MyMinHash \n')
+    print("Signature table: \n", SIG, "\n")
 
 
+# Calculate Similarity from Signatures
 def MySigSim(docID1, docID2, numPermutations):
     count = 0
     docSig1 = SIG[docID1 - 1]
@@ -214,11 +262,12 @@ def MySigSim(docID1, docID2, numPermutations):
         if docSig1[i] == docSig2[i]:
             count += 1
 
-    sigSim = count / numPermutations
+    sigSim = count / K
 
     return sigSim
 
 
+# Find the nearest neighbors from a document
 def NearestNeighbors(docID):
     global docDistance
     numNeighbors = 5
@@ -260,30 +309,88 @@ def BruteForce():
         AvgSimList.append(tempAvg)
         sum = 0
 
-    AvgSim = allDocAvg/numDocuments
+    AvgSim = allDocAvg / numDocuments
 
-    return AvgSim
+    return "\nAverage= " + str(AvgSim) + "\n"
+
+
+# Split the SIG list in b bands
+def band_split(b, rowsPerBands):
+    # r is rowsPerBand, b is numBands
+    global SIG
+    #signature = sig[sign]
+    vec = []
+    orderedDictList = []
+
+    for s in range(len(SIG)):
+        signature = SIG[s]
+        #for i in range(0, len(signature), rowsPerBands):
+        tupl = tuple(signature[b: b + rowsPerBands])
+        vec.insert(s, tupl)
+
+    h = dict()
+    key = 1
+    for x in vec:
+        h[key] = hashLSH(hash(x))
+        key = key + 1
+
+    ordered = {k: v for k, v in sorted(h.items(), key=lambda item: item[1])}
+
+    bucket = 0
+    temp = 0
+    i = 0
+    listofBuckets = []
+    matches = []
+
+    for key in ordered:
+        listofBuckets.insert(i, bucket)
+
+        if temp == ordered[key]:
+            bucket = bucket - 1
+            ordered[key] = bucket
+
+        temp = ordered[key]
+        ordered[key] = bucket
+        bucket += 1
+
+    """print(listofBuckets)
+    for i in range(len(listofBuckets)):
+        if i < len(listofBuckets)-1:
+            if listofBuckets[i] == listofBuckets[i+1]:
+                matches.append(i)
+                matches.append(i+1)
+
+    print(matches)"""
+    return ordered
 
 
 def LSH(rowsPerBands):
-    numBands = K/rowsPerBands
+    global SIG, LSHdicts, numBands
+
+    numBands = int(K / rowsPerBands)
+
+    # for each band add docIDs in buckets
+    for b in range(numBands):
+        LSHdicts.append(band_split(b, rowsPerBands))
 
 
-
+    return LSHdicts
 
 def main():
     MyReadDataRoutine()
     print(readMsg, "\n")
 
-    MyJacSimWithSets(1, 2)
-    MyJacSimWithOrderedLists(1, 2)
+    print("Jaccard: ", MyJacSimWithSets(1, 2))
+    # print("Jaccard: ", MyJacSimWithOrderedLists(1, 2))
 
-    MyMinHash(wordDict)
+    # RandomHashForSignatures()
+    MyMinHash(wordsDict)
 
-    MySigSim(2, 5, 7)
+    print("Sig: ", MySigSim(1, 2, 10))
 
-    avg = BruteForce()
-    print("AVG=", avg)
+    print(BruteForce())
+
+    print(LSH(5))
 
 
 if __name__ == "__main__":
