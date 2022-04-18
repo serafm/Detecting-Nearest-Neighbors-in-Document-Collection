@@ -3,6 +3,8 @@ import os
 import time
 import random
 import collections
+from termcolor import colored
+
 
 global docDict, numDocuments, wordsDict, SIG, file_path, readMsg, myNeighborsDict, docDistance, K, permutationFileNames, hashLSH, numBands, rowsPerBand
 
@@ -26,6 +28,19 @@ K = 10
 
 # List of Signatures
 SIG = []
+
+
+# Fonts and Colors for output terminal
+class font:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 
 # Random Hash Function
@@ -117,7 +132,7 @@ def MyReadDataRoutine():
 
     readMsg = str('Read ' + str(numDocuments) + ' documents and added them in dictionary. Execution time: ' + str(
         timeTaken) + ' seconds for MyReadDataRoutine')
-    print("DocDict:\n", docDict)
+    #print("DocDict:\n", docDict)
 
 
 # Jaccard Similarity of 2 Documents with double for-loop
@@ -247,7 +262,7 @@ def MyMinHash(wordsDict):
     # get the execution time
     elapsed_time = et - st
     print('Execution time:', '%.3f' % elapsed_time, 'seconds for MyMinHash \n')
-    print("Signature table: \n", SIG, "\n")
+    print(f"{font.WARNING}Signature table:{font.ENDC}\n", SIG, "\n")
 
 
 # Calculate Similarity from Signatures
@@ -309,7 +324,7 @@ def BruteForce():
 
     AvgSim = allDocAvg / numDocuments
 
-    return "\nAverage= " + str(AvgSim) + "\n"
+    return "Average= " + str(AvgSim) + "\n"
 
 
 def LSH(rowsPerBands):
@@ -334,7 +349,7 @@ def LSH(rowsPerBands):
 
         # hashLSH
         randomHash = {x: hashLSH(myDict[x]) for x in myDict}
-        print(randomHash)
+        #print(randomHash)
 
         # Sort the dictionary
         ordered = sorted(randomHash, key=randomHash.get)
@@ -349,12 +364,14 @@ def LSH(rowsPerBands):
             randomHash[key] = bucket
             bucket += 1
 
-        print(randomHash)
+        print(colored("DocIDs:Bucket for Band:" + str(b+1), 'green') + "\n", randomHash)
 
         # Find pairs
         for i in range(len(ordered) - 1):
             if randomHash[ordered[i]] == randomHash[ordered[i + 1]]:
-                pairs.append((ordered[i], ordered[i + 1]))
+                tup = (ordered[i], ordered[i + 1])
+                if tup not in pairs:
+                    pairs.append(tup)
 
         myDict = dict()
         bucket = 1
@@ -363,24 +380,30 @@ def LSH(rowsPerBands):
     if len(pairs) == 0:
         print("\nNo pairs found")
     else:
-        print("\nPairs: ", pairs)
+        print(f"{font.WARNING}\nPairs:{font.ENDC}", pairs)
 
 
 
 def main():
     MyReadDataRoutine()
+    print(f"{font.WARNING}MyReadDataRoutine:{font.ENDC}")
     print(readMsg, "\n")
 
-    print("Jaccard: ", MyJacSimWithSets(1, 2))
+    print(f"{font.WARNING}MyJacSimWithSets:{font.ENDC}")
+    print("Jaccard: ", MyJacSimWithSets(1, 2), "\n")
     # print("Jaccard: ", MyJacSimWithOrderedLists(1, 2))
 
     #RandomHashForSignatures()
+    print(f"{font.WARNING}MyMinHash:{font.ENDC}")
     MyMinHash(wordsDict)
 
+    print(f"{font.WARNING}MySigSim:{font.ENDC}")
     print("Sig: ", MySigSim(1, 2, 10))
 
+    print(f"{font.WARNING}\nBruteForce:{font.ENDC}")
     print(BruteForce())
 
+    print(f"{font.WARNING}LSH:{font.ENDC}")
     LSH(1)
 
 
