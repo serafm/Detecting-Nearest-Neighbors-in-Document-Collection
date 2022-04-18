@@ -4,12 +4,10 @@ import time
 import random
 import collections
 
-global docDict, numDocuments, wordsDict, SIG, file_path, readMsg, myNeighborsDict, docDistance, K, LSHdicts, permutationFileNames, hashLSH, numBands, rowsPerBand
+global docDict, numDocuments, wordsDict, SIG, file_path, readMsg, myNeighborsDict, docDistance, K, permutationFileNames, hashLSH, numBands, rowsPerBand
 
 # Dictionary key:docID, value:wordIDs
 docDict = dict()
-
-LSHdicts = []
 
 # Dictionary key:wordID, value:docIDs
 wordsDict = dict()
@@ -314,67 +312,60 @@ def BruteForce():
     return "\nAverage= " + str(AvgSim) + "\n"
 
 
-# Split the SIG list in b bands
-def band_split(b, rowsPerBands):
-    # r is rowsPerBand, b is numBands
-    global SIG
-    #signature = sig[sign]
-    vec = []
-    orderedDictList = []
-
-    for s in range(len(SIG)):
-        signature = SIG[s]
-        #for i in range(0, len(signature), rowsPerBands):
-        tupl = tuple(signature[b: b + rowsPerBands])
-        vec.insert(s, tupl)
-
-    h = dict()
-    key = 1
-    for x in vec:
-        h[key] = hashLSH(hash(x))
-        key = key + 1
-
-    ordered = {k: v for k, v in sorted(h.items(), key=lambda item: item[1])}
-
-    bucket = 0
-    temp = 0
-    i = 0
-    listofBuckets = []
-    matches = []
-
-    for key in ordered:
-        listofBuckets.insert(i, bucket)
-
-        if temp == ordered[key]:
-            bucket = bucket - 1
-            ordered[key] = bucket
-
-        temp = ordered[key]
-        ordered[key] = bucket
-        bucket += 1
-
-    """print(listofBuckets)
-    for i in range(len(listofBuckets)):
-        if i < len(listofBuckets)-1:
-            if listofBuckets[i] == listofBuckets[i+1]:
-                matches.append(i)
-                matches.append(i+1)
-
-    print(matches)"""
-    return ordered
-
-
 def LSH(rowsPerBands):
-    global SIG, LSHdicts, numBands
+    global SIG, numBands
 
+    # Number of Bands
     numBands = int(K / rowsPerBands)
 
-    # for each band add docIDs in buckets
+    temp = 0
+    bucket = 1
+    myDict = dict()
+    pairs = []
+
+    # add docIDs in buckets using hashLSH
     for b in range(numBands):
-        LSHdicts.append(band_split(b, rowsPerBands))
+        # Get all the docIDs signatures for every band and add it in a bucket
+        for i in range(len(SIG)):
+            signature = SIG[i]
+            # make a docID signature from list to tuple. Now we can hash the signature
+            t = tuple(signature[b: b + rowsPerBands])
+            myDict[i + 1] = hash(t)
+
+        # hashLSH
+        randomHash = {x: hashLSH(myDict[x]) for x in myDict}
+        print(randomHash)
+
+        # Sort the dictionary
+        ordered = sorted(randomHash, key=randomHash.get)
+        # print(ordered)
+
+        # add docIDs in buckets
+        for key in ordered:
+            if temp == randomHash[key]:
+                bucket = bucket - 1
+                randomHash[key] = bucket
+            temp = randomHash[key]
+            randomHash[key] = bucket
+            bucket += 1
+
+        print(randomHash)
+
+        # Find pairs
+        for i in range(len(ordered) - 1):
+            if randomHash[ordered[i]] == randomHash[ordered[i + 1]]:
+                pairs.append((ordered[i], ordered[i + 1]))
+
+        myDict = dict()
+        bucket = 1
+        temp = 0
+
+    if len(pairs) == 0:
+        print("\nNo pairs found")
+    else:
+        print("\nPairs: ", pairs)
 
 
-    return LSHdicts
 
 def main():
     MyReadDataRoutine()
@@ -390,7 +381,7 @@ def main():
 
     print(BruteForce())
 
-    print(LSH(5))
+    LSH(1)
 
 
 if __name__ == "__main__":
