@@ -21,10 +21,10 @@ myNeighborsDict = dict()
 docDistance = dict()
 
 # Number of documents to read
-numDocuments = 10
+numDocuments = 20
 
 # Number of permutation
-K = 10
+K = 20
 
 # List of Signatures
 SIG = []
@@ -150,26 +150,24 @@ def MyJacSimWithSets(docID1, docID2):
     unionCounter = (len(doc1set) + len(doc2set)) - intersectionCounter
 
     # Jaccard Similarity
-    jacSim = intersectionCounter / unionCounter
+    jacSimWithSets = intersectionCounter / unionCounter
 
-    return jacSim
+    return jacSimWithSets
 
 
 # Jaccard Similarity of 2 Documents with pointers
 def MyJacSimWithOrderedLists(docID1, docID2):
     pos1 = 0
     pos2 = 0
-    intersectionCounter2 = 0
+    intersectionCounter = 0
 
     # make lists for the 2 docs
     doc1List = list(docDict.get(docID1))
     doc2List = list(docDict.get(docID2))
-    sizeOfDoc1 = len(doc1List)
-    sizeOfDoc2 = len(doc2List)
 
-    while pos1 < sizeOfDoc1 and pos2 < sizeOfDoc2:
+    while pos1 < len(doc1List) and pos2 < len(doc2List):
         if int(doc1List[pos1]) == int(doc2List[pos2]):
-            intersectionCounter2 += 1
+            intersectionCounter += 1
             pos1 += 1
             pos2 += 1
         else:
@@ -178,12 +176,12 @@ def MyJacSimWithOrderedLists(docID1, docID2):
             else:
                 pos2 += 1
 
-    unionCounter2 = (sizeOfDoc1 + sizeOfDoc2) - intersectionCounter2
+    unionCounter = (len(doc1List) + len(doc2List)) - intersectionCounter
 
     # Jaccard Similarity
-    jacSim2 = intersectionCounter2 / unionCounter2
+    jacSimWithOrderedLists = intersectionCounter / unionCounter
 
-    return jacSim2
+    return jacSimWithOrderedLists
 
 
 # Random Hash Function for Permutations
@@ -208,11 +206,11 @@ def RandomHashForSignatures():
 
 
 # Create the Signature List
-def MyMinHash(wordsDict):
+def MyMinHash(wordsDict, K):
+    global numDocuments, SIG, permutationFileNames
+
     # get the start time
     st = time.time()
-
-    global numDocuments, SIG, permutationFileNames
 
     # Open the file with the randomHash file names
     permutationFiles = open("permutationFiles.txt")
@@ -235,9 +233,9 @@ def MyMinHash(wordsDict):
         randomHash = []
     randomHashList.pop(0)
 
-    thesiPinaka = 1
-    pos = 0
+    positionOfList = 1
 
+    # Arxikopoiisi tou pinaka SIG
     for col in range(numDocuments):
         SIG.append([])
         for i in range(K):
@@ -245,16 +243,14 @@ def MyMinHash(wordsDict):
 
     for word in wordsDict:
         list = wordsDict.get(word)
-        for doc in range(len(list)):
+        for doc in list:
             for j in range(K):
                 for i in range(len(randomHashList[0])):
-                    if thesiPinaka == int(randomHashList[j][i]):
-                        if (i + 1) < SIG[int(list[pos]) - 1][j]:
-                            SIG[int(list[pos]) - 1][j] = i + 1
+                    if positionOfList == int(randomHashList[j][i]):
+                        if (i + 1) < SIG[doc - 1][j]:
+                            SIG[doc - 1][j] = i + 1
                             break
-            pos += 1
-        thesiPinaka += 1
-        pos = 0
+        positionOfList += 1
 
     # get the end time
     et = time.time()
@@ -267,6 +263,7 @@ def MyMinHash(wordsDict):
 
 # Calculate Similarity from Signatures
 def MySigSim(docID1, docID2, numPermutations):
+    global K
     count = 0
     docSig1 = SIG[docID1 - 1]
     docSig2 = SIG[docID2 - 1]
@@ -275,7 +272,7 @@ def MySigSim(docID1, docID2, numPermutations):
         if docSig1[i] == docSig2[i]:
             count += 1
 
-    sigSim = count / K
+    sigSim = count/(len(docSig1)+len(docSig2))
 
     return sigSim
 
@@ -349,7 +346,7 @@ def LSH(rowsPerBands):
 
         # hashLSH
         randomHash = {x: hashLSH(myDict[x]) for x in myDict}
-        #print(randomHash)
+        # print(randomHash)
 
         # Sort the dictionary
         ordered = sorted(randomHash, key=randomHash.get)
@@ -366,8 +363,10 @@ def LSH(rowsPerBands):
 
         print(colored("DocIDs:Bucket for Band:" + str(b+1), 'green') + "\n", randomHash)
 
+
         # Find pairs
         for i in range(len(ordered) - 1):
+            # print(randomHash[ordered[i]])
             if randomHash[ordered[i]] == randomHash[ordered[i + 1]]:
                 tup = (ordered[i], ordered[i + 1])
                 if tup not in pairs:
@@ -377,6 +376,38 @@ def LSH(rowsPerBands):
         bucket = 1
         temp = 0
 
+    checked = []
+    doc = 1
+    numNeighbors = 5
+    sum = 0
+    allDocAvg = 0
+
+    for pair in pairs:
+        p = list(pair)
+        if doc == p[0]:
+            if p[0] not in checked:
+                n = NearestNeighbors(p[0])
+                for doc in n:
+                    sum = sum + n.get(doc)
+
+                tempAvg = sum / numNeighbors
+                allDocAvg += tempAvg
+                sum = 0
+                AvgSim = allDocAvg / numDocuments
+                print("AVG=", AvgSim)
+
+            """if p[1] not in checked:
+                n2 = NearestNeighbors(p[1])
+                for doc in n:
+                    sum = sum + n.get(doc)
+
+                tempAvg = sum / numNeighbors
+                allDocAvg += tempAvg
+                sum = 0
+                AvgSim = allDocAvg / numDocuments
+                print("AVG=", AvgSim)"""
+
+
     if len(pairs) == 0:
         print("\nNo pairs found")
     else:
@@ -385,20 +416,22 @@ def LSH(rowsPerBands):
 
 
 def main():
+
     MyReadDataRoutine()
     print(f"{font.WARNING}MyReadDataRoutine:{font.ENDC}")
     print(readMsg, "\n")
 
-    print(f"{font.WARNING}MyJacSimWithSets:{font.ENDC}")
+    print(f"{font.WARNING}MyJacSimWithSets for docs 1,2:{font.ENDC}")
     print("Jaccard: ", MyJacSimWithSets(1, 2), "\n")
     # print("Jaccard: ", MyJacSimWithOrderedLists(1, 2))
 
-    #RandomHashForSignatures()
-    print(f"{font.WARNING}MyMinHash:{font.ENDC}")
-    MyMinHash(wordsDict)
+    # RandomHashForSignatures()
 
-    print(f"{font.WARNING}MySigSim:{font.ENDC}")
-    print("Sig: ", MySigSim(1, 2, 10))
+    print(f"{font.WARNING}MyMinHash:{font.ENDC}")
+    MyMinHash(wordsDict,K)
+
+    print(f"{font.WARNING}MySigSim for docs 1,2:{font.ENDC}")
+    print("Sig: ", MySigSim(1, 2, 20))
 
     print(f"{font.WARNING}\nBruteForce:{font.ENDC}")
     print(BruteForce())
