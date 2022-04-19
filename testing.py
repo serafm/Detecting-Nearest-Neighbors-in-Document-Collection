@@ -10,6 +10,9 @@ SIG = [[1, 4, 5, 3, 2, 7, 9, 10, 3, 3], [1, 4, 5, 3, 2, 4, 11, 8, 9, 1], [14, 2,
 K = 10
 
 
+docID1 = [1,2,3,4,5,6,7,8,9,10]
+docID2 = [2,3,4,5,6,7,1,9,8,10]
+
 
 def create_random_hash_function(p=2 ** 33 - 355, m=2 ** 32 - 1):
     a = random.randint(1, p - 1)
@@ -60,11 +63,58 @@ def LSH(rowsPerBands):
     print(pairs)
 
 
+def MyJacSimWithOrderedLists(docID1, docID2):
+    pos1 = 0
+    pos2 = 0
+    intersectionCounter = 0
+
+    # make lists for the 2 docs
+    doc1List = docID1
+    doc2List = docID2
+
+    while pos1 < len(doc1List) and pos2 < len(doc2List):
+        if int(doc1List[pos1]) == int(doc2List[pos2]):
+            intersectionCounter += 1
+            pos1 += 1
+            pos2 += 1
+        else:
+            if int(doc1List[pos1]) < int(doc2List[pos2]):
+                pos1 += 1
+            else:
+                pos2 += 1
+
+    unionCounter = (len(doc1List) + len(doc2List)) - intersectionCounter
+
+    # Jaccard Similarity
+    jacSimWithOrderedLists = intersectionCounter / unionCounter
+
+    return jacSimWithOrderedLists
+
+
+def BruteForce():
+
+    numDocuments = 10
+    calculatedDocs = []
+
+    for docID in range(1, numDocuments+1):
+        for otherDocID in range(2, numDocuments+1):
+            if docID != otherDocID:
+                calculatedDocs.append([docID, otherDocID])
+                tempList = sorted([docID, otherDocID])
+                if tempList not in calculatedDocs:
+                    MyJacSimWithOrderedLists(docID, otherDocID)
+
 def main():
-    global hashLSH
-    hashLSH = create_random_hash_function()
-    LSH(5)
-    print(lista[0][1])
+
+    #global hashLSH
+    #hashLSH = create_random_hash_function()
+    #LSH(5)
+
+
+
+    tempList = sorted([3, 1])
+    print(tempList)
+
 
 
 if __name__ == "__main__":

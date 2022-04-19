@@ -5,8 +5,7 @@ import random
 import collections
 from termcolor import colored
 
-
-global docDict, numDocuments, wordsDict, SIG, file_path, readMsg, myNeighborsDict, docDistance, K, permutationFileNames, hashLSH, numBands, rowsPerBand
+global docDict, numDocuments, wordsDict, SIG, file_path, readMsg, myNeighborsDict, docDistance, K, permutationFileNames, hashLSH, numBands, rowsPerBand, pairs
 
 # Dictionary key:docID, value:wordIDs
 docDict = dict()
@@ -28,6 +27,9 @@ K = 20
 
 # List of Signatures
 SIG = []
+
+# List of pairs from LSH
+pairs = []
 
 
 # Fonts and Colors for output terminal
@@ -130,9 +132,8 @@ def MyReadDataRoutine():
     elapsed_time = et - st
     timeTaken = str(float(elapsed_time))
 
-    readMsg = str('Read ' + str(numDocuments) + ' documents and added them in dictionary. Execution time: ' + str(
-        timeTaken) + ' seconds for MyReadDataRoutine')
-    #print("DocDict:\n", docDict)
+    readMsg = str('Read ' + str(numDocuments) + ' documents and added them in dictionary. Execution time: ' + str(timeTaken) + ' seconds for MyReadDataRoutine')
+    # print("DocDict:\n", docDict)
 
 
 # Jaccard Similarity of 2 Documents with double for-loop
@@ -235,7 +236,7 @@ def MyMinHash(wordsDict, K):
 
     positionOfList = 1
 
-    # Arxikopoiisi tou pinaka SIG
+    # Initialise SIG List
     for col in range(numDocuments):
         SIG.append([])
         for i in range(K):
@@ -272,68 +273,108 @@ def MySigSim(docID1, docID2, numPermutations):
         if docSig1[i] == docSig2[i]:
             count += 1
 
-    sigSim = count/(len(docSig1)+len(docSig2))
+    sigSim = count / (len(docSig1) + len(docSig2))
 
     return sigSim
 
 
 # Find the nearest neighbors from a document
-def NearestNeighbors(docID):
-    global docDistance
-    numNeighbors = 5
-    i = 0
-    SigSimList = []
-    JacSimList = []
-
-    for d in range(1, numDocuments + 1):
-        if d != docID:
-            SigSimList.append(MySigSim(docID, d, K))
-            JacSimList.append(MyJacSimWithOrderedLists(docID, d))
-            distance = 1 - MyJacSimWithOrderedLists(docID, d)
-            if d not in docDistance:
-                docDistance[d] = distance
-
-    orderedDistanceDict = {k: v for k, v in sorted(docDistance.items(), key=lambda item: item[1])}
-
-    for doc in orderedDistanceDict:
-        if i < numNeighbors:
-            myNeighborsDict[doc] = JacSimList[doc - 2]
-            i += 1
-
-    return myNeighborsDict
-
-
-def BruteForce():
-    AvgSimList = []
-    tempDict = dict()
-    numNeighbors = 5
-    sum = 0
-    allDocAvg = 0
+def AverageSimilarityOfAllDocumentsWithBruteForce():
+    global numDocuments
+    AvgSim = []
 
     for i in range(1, numDocuments + 1):
-        tempDict = NearestNeighbors(i)
-        for doc in tempDict:
-            sum = sum + tempDict.get(doc)
-        tempAvg = sum / numNeighbors
-        allDocAvg += tempAvg
-        AvgSimList.append(tempAvg)
-        sum = 0
+        avg = BruteForce(i)
+        AvgSim.append(avg)
 
-    AvgSim = allDocAvg / numDocuments
+    AverageSim = (1 / numDocuments) * sum(AvgSim)
 
-    return "Average= " + str(AvgSim) + "\n"
+    return AverageSim
 
 
-def LSH(rowsPerBands):
-    global SIG, numBands
+def BruteForce(docID):
+    global myNeighborsDict, numDocuments
+
+    docsDistanceDict = dict()
+    jaccardSimList = []
+    numNeighbors = 5
+
+    # get the start time
+    st = time.time()
+
+    for otherDocID in range(1, numDocuments + 1):
+        if docID != otherDocID:
+            jaccardSimList.append(MyJacSimWithOrderedLists(docID, otherDocID))
+            distance = 1 - MyJacSimWithOrderedLists(docID, otherDocID)
+            docsDistanceDict[otherDocID] = distance
+
+    # get the end time
+    et = time.time()
+
+    orderedDocsDistanceDict = {k: v for k, v in sorted(docsDistanceDict.items(), key=lambda item: item[1])}
+
+    n = 0
+
+    # Get the first N Neighbors from Distance Dictionary
+    for doc in orderedDocsDistanceDict:
+        if n < numNeighbors:
+            myNeighborsDict[doc] = jaccardSimList[doc - 2]
+            n += 1
+
+    AvgSimOfNeighbors = sum(myNeighborsDict.values()) / len(myNeighborsDict)
+
+    # get the execution time
+    elapsed_time = et - st
+    print('Execution time:', '%.3f' % elapsed_time, 'seconds for BruteForce \n')
+
+    return AvgSimOfNeighbors
+
+
+def CalculatePairsSimilarityFromLSH():
+    global rowsPerBand, numBands, pairs
+
+    jaccardDict = dict()
+    distanceDict = dict()
+
+    # threshold
+    # s = pow((1/numBands), (1/rowsPerBand))
+
+    for pair in pairs:
+        p = list(pair)
+        docID1 = p[0]
+        docID2 = p[1]
+        jaccard = MyJacSimWithOrderedLists(docID1, docID2)
+        distance = 1 - jaccard
+        jaccardDict[pair] = jaccard
+        distanceDict[pair] = distance
+
+    print(f"{font.WARNING}\nJaccard Similarity for all pairs from LSH:\n{font.ENDC}", jaccardDict)
+    print(f"{font.WARNING}\nDistance for all pairs from LSH:\n{font.ENDC}", distanceDict)
+
+
+def AverageSimilarity(docID):
+    jaccardList = []
+    for doc in range(1, numDocuments + 1):
+        if docID != doc:
+            jaccardList.append(MyJacSimWithOrderedLists(docID, doc))
+
+    avg = sum(jaccardList) / numDocuments
+
+    return avg
+
+
+def LSH(SIG, rowsPerBand):
+    global numBands, pairs
 
     # Number of Bands
-    numBands = int(K / rowsPerBands)
+    numBands = int(K / rowsPerBand)
+
+    neighborsDict = dict()
 
     temp = 0
     bucket = 1
-    myDict = dict()
-    pairs = []
+    tempDict = dict()
+    LSHdicts = dict()
 
     # add docIDs in buckets using hashLSH
     for b in range(numBands):
@@ -341,82 +382,49 @@ def LSH(rowsPerBands):
         for i in range(len(SIG)):
             signature = SIG[i]
             # make a docID signature from list to tuple. Now we can hash the signature
-            t = tuple(signature[b: b + rowsPerBands])
-            myDict[i + 1] = hash(t)
+            t = tuple(signature[b: b + rowsPerBand])
+            tempDict[i + 1] = hash(t)
 
         # hashLSH
-        randomHash = {x: hashLSH(myDict[x]) for x in myDict}
+        LSHdicts = {x: hashLSH(tempDict[x]) for x in tempDict}
         # print(randomHash)
 
         # Sort the dictionary
-        ordered = sorted(randomHash, key=randomHash.get)
+        ordered = sorted(LSHdicts, key=LSHdicts.get)
         # print(ordered)
 
-        # add docIDs in buckets
+        # add docIDs in buckets (Sera's Algorithm)
         for key in ordered:
-            if temp == randomHash[key]:
+            if temp == LSHdicts[key]:
                 bucket = bucket - 1
-                randomHash[key] = bucket
-            temp = randomHash[key]
-            randomHash[key] = bucket
+                LSHdicts[key] = bucket
+            temp = LSHdicts[key]
+            LSHdicts[key] = bucket
             bucket += 1
 
-        print(colored("DocIDs:Bucket for Band:" + str(b+1), 'green') + "\n", randomHash)
-
+        # print(colored("DocIDs:Bucket for Band:" + str(b+1), 'green') + "\n", LSHdicts)
 
         # Find pairs
         for i in range(len(ordered) - 1):
             # print(randomHash[ordered[i]])
-            if randomHash[ordered[i]] == randomHash[ordered[i + 1]]:
+            if LSHdicts[ordered[i]] == LSHdicts[ordered[i + 1]]:
                 tup = (ordered[i], ordered[i + 1])
                 if tup not in pairs:
                     pairs.append(tup)
 
-        myDict = dict()
+        tempDict = dict()
         bucket = 1
         temp = 0
 
-    checked = []
-    doc = 1
-    numNeighbors = 5
-    sum = 0
-    allDocAvg = 0
-
-    for pair in pairs:
-        p = list(pair)
-        if doc == p[0]:
-            if p[0] not in checked:
-                n = NearestNeighbors(p[0])
-                for doc in n:
-                    sum = sum + n.get(doc)
-
-                tempAvg = sum / numNeighbors
-                allDocAvg += tempAvg
-                sum = 0
-                AvgSim = allDocAvg / numDocuments
-                print("AVG=", AvgSim)
-
-            """if p[1] not in checked:
-                n2 = NearestNeighbors(p[1])
-                for doc in n:
-                    sum = sum + n.get(doc)
-
-                tempAvg = sum / numNeighbors
-                allDocAvg += tempAvg
-                sum = 0
-                AvgSim = allDocAvg / numDocuments
-                print("AVG=", AvgSim)"""
-
-
     if len(pairs) == 0:
         print("\nNo pairs found")
-    else:
-        print(f"{font.WARNING}\nPairs:{font.ENDC}", pairs)
 
+    pairs = sorted(pairs)
+
+    return pairs
 
 
 def main():
-
     MyReadDataRoutine()
     print(f"{font.WARNING}MyReadDataRoutine:{font.ENDC}")
     print(readMsg, "\n")
@@ -428,16 +436,21 @@ def main():
     # RandomHashForSignatures()
 
     print(f"{font.WARNING}MyMinHash:{font.ENDC}")
-    MyMinHash(wordsDict,K)
+    MyMinHash(wordsDict, K)
 
     print(f"{font.WARNING}MySigSim for docs 1,2:{font.ENDC}")
     print("Sig: ", MySigSim(1, 2, 20))
 
-    print(f"{font.WARNING}\nBruteForce:{font.ENDC}")
-    print(BruteForce())
+    print(f"{font.WARNING}\nBruteForce DocID=1 :{font.ENDC}")
+    print(f"{font.WARNING}Average Similarity:{font.ENDC}", BruteForce(1), "\n")
 
-    print(f"{font.WARNING}LSH:{font.ENDC}")
-    LSH(1)
+    print(f"{font.WARNING}Average Similarity for all documents:{font.ENDC}",
+          AverageSimilarityOfAllDocumentsWithBruteForce())
+
+    print(f"{font.WARNING}\nLSH:{font.ENDC}")
+    print(f"{font.WARNING}\nPairs:{font.ENDC}", LSH(SIG, 1), "\n")
+
+    print(CalculatePairsSimilarityFromLSH())
 
 
 if __name__ == "__main__":
