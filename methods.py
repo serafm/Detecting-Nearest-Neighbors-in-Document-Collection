@@ -3,6 +3,7 @@ import os
 import time
 import random
 import collections
+import Gui as user
 
 
 """
@@ -24,9 +25,9 @@ import collections
 """
 
 
-global docDict, numDocuments, wordsDict, SIG, file_path
-global readMsg, myNeighborsDict, docDistance, K, permutationFileNames
-global hashLSH, numBands, rowsPerBand, pairs, elapsed_time_for_MyMinHash, jaccardSimList
+global docDict, numDocuments, wordsDict, SIG, file_path, numPermutations, myNeighborsPairsDict
+global readMsg, myNeighborsDict, docDistance, K, permutationFileNames, numNeighbors, selectedSimilarityMethod
+global hashLSH, numBands, rowsPerBand, pairs, elapsed_time_for_MyMinHash, elapsed_time_bruteForce, randomHashList
 global elapsed_time_for_SigSim, elapsed_time_for_jacSimWithOrderedLists, elapsed_time_for_jacSimWithSets
 
 # Dictionary key:docID, value:wordIDs
@@ -37,24 +38,22 @@ wordsDict = dict()
 
 # Dictionary key:docID, value:Similarity
 myNeighborsDict = dict()
+myNeighborsPairsDict = dict()
 
 # Dictionary key:docID, value:distance from a docID
 docDistance = dict()
 
-# Number of documents to read
-# numDocuments = 20
+# Random Hash List
+randomHashList = [[]]
 
 # Number of permutation
-K = 20
+# K = 20
 
 # List of Signatures
 SIG = []
 
 # List of pairs from LSH
 pairs = []
-
-# Jaccard Similarity List for Brute Force
-jaccardSimList = []
 
 
 # Fonts and Colors for output terminal
@@ -238,14 +237,16 @@ def MyJacSimWithOrderedLists(docID1, docID2):
 # Random Hash Function for Permutations
 def RandomHashForSignatures(K):
     w = len(wordsDict)
-    permutationFiles = open("permutationFiles.txt", "w")
+    # permutationFiles = open("permutationFiles.txt", "w")
 
     for num in range(1, K + 1):
         h = create_random_hash_function()
         randomHash = {x: h(x) for x in range(w)}
         myHashKeysOrderedByValues = sorted(randomHash, key=randomHash.get)
         myHash = {myHashKeysOrderedByValues[x]: x for x in range(w)}
+        randomHashList.append(myHash)
 
+        """
         filename = "randomHash" + str(num) + ".txt"
         if os.path.exists(filename):
             open(filename).flush()
@@ -254,6 +255,8 @@ def RandomHashForSignatures(K):
         for i in myHash:
             string = str(i) + ":" + str(myHash[i]) + "\n"
             f.write(string)
+        """
+    randomHashList.pop(0)
 
 
 # Create the Signature List
@@ -264,25 +267,27 @@ def MyMinHash(wordsDict, K, numDocuments):
     st = time.time()
 
     # Open the file with the randomHash file names
-    permutationFiles = open("permutationFiles.txt")
+    # permutationFiles = open("permutationFiles.txt")
 
     # Add the file names in a list
-    permutationFileNames = permutationFiles.read().split("\n")
+    # permutationFileNames = permutationFiles.read().split("\n")
 
     # remove the last element (is an empty string)
-    permutationFileNames.pop(-1)
+    # permutationFileNames.pop(-1)
 
-    randomHash = []
-    randomHashList = [[]]
+    # randomHash = []
+    # randomHashList = [[]]
 
+    """
     for hash in range(K):
         for i in range(1, len(wordsDict)):
             randomHash.append(
-                linecache.getline(str(permutationFileNames[hash]), i).replace("\n", "").replace(str(":" + str(i - 1)),
-                                                                                                ""))
+                linecache.getline(str(permutationFileNames[hash]), i).replace("\n", "").replace(str(":" + str(i - 1)), ""))
         randomHashList.append(randomHash)
         randomHash = []
-    randomHashList.pop(0)
+    """
+
+    # randomHashList.pop(0)
 
     positionOfList = 1
 
@@ -317,6 +322,7 @@ def MyMinHash(wordsDict, K, numDocuments):
 
 # Calculate Similarity from Signatures
 def MySigSim(docID1, docID2, numPermutations):
+
     # get the start time
     st = time.time()
 
@@ -350,28 +356,32 @@ def AverageSimilarityOfAllDocumentsWithBruteForce():
         avg = BruteForce(i)
         AvgSim.append(avg)
 
-    AverageSim = (1 / numDocuments) * sum(AvgSim)
+    AverageSim = (1/numDocuments)*sum(AvgSim)
 
     return AverageSim
 
 
 def BruteForce(docID):
-    global myNeighborsDict, numDocuments, jaccardSimList
+    global myNeighborsDict, numDocuments, elapsed_time_bruteForce, numNeighbors, numPermutations, selectedSimilarityMethod
 
     docsDistanceDict = dict()
-    numNeighbors = 5
+    jaccardSimList = []
+    sigSimList = []
+
 
     # get the start time
     st = time.time()
 
     for otherDocID in range(1, numDocuments + 1):
         if docID != otherDocID:
-            jaccardSimList.append(MyJacSimWithOrderedLists(docID, otherDocID))
-            distance = 1 - MyJacSimWithOrderedLists(docID, otherDocID)
-            docsDistanceDict[otherDocID] = distance
-
-    # get the end time
-    et = time.time()
+            if selectedSimilarityMethod == 1:
+                jaccardSimList.append(MyJacSimWithOrderedLists(docID, otherDocID))
+                distance = 1 - MyJacSimWithOrderedLists(docID, otherDocID)
+                docsDistanceDict[otherDocID] = distance
+            elif selectedSimilarityMethod == 0:
+                sigSimList.append(MySigSim(docID, otherDocID, numPermutations))
+                distance = 1 - MySigSim(docID, otherDocID, numPermutations)
+                docsDistanceDict[otherDocID] = distance
 
     orderedDocsDistanceDict = {k: v for k, v in sorted(docsDistanceDict.items(), key=lambda item: item[1])}
 
@@ -379,48 +389,100 @@ def BruteForce(docID):
 
     # Get the first N Neighbors from Distance Dictionary
     for doc in orderedDocsDistanceDict:
-        if n < numNeighbors:
-            myNeighborsDict[doc] = jaccardSimList[doc - 2]
-            n += 1
+        if selectedSimilarityMethod == 1:
+            if n < numNeighbors:
+                myNeighborsDict[doc] = jaccardSimList[doc - 2]
+                n += 1
+        elif selectedSimilarityMethod == 0:
+            if n < numNeighbors:
+                myNeighborsDict[doc] = sigSimList[doc - 2]
+                n += 1
 
-    AvgSimOfNeighbors = sum(myNeighborsDict.values()) / len(myNeighborsDict)
+    AvgSimOfNeighbors = sum(myNeighborsDict.values())/len(myNeighborsDict)
+
+    # get the end time
+    et = time.time()
 
     # get the execution time
     elapsed_time = et - st
-    print('Execution time:', '%.3f' % elapsed_time, 'seconds for BruteForce \n')
+    elapsed_time_bruteForce = 'Execution time: ' + str(elapsed_time) + ' seconds for BruteForce'
 
     return AvgSimOfNeighbors
 
 
-def CalculatePairsSimilarityFromLSH():
-    global rowsPerBand, numBands, pairs
+def CalculatePairsDistanceFromLSH():
+    global rowsPerBand, numBands, pairs, myNeighborsPairsDict, numNeighbors, selectedSimilarityMethod
 
-    jaccardDict = dict()
     distanceDict = dict()
+    jaccardSimList = []
+    sigSimList = []
 
     # threshold
     # s = pow((1/numBands), (1/rowsPerBand))
 
+    # Find similarity with one of the following methods
     for pair in pairs:
         p = list(pair)
         docID1 = p[0]
         docID2 = p[1]
-        jaccard = MyJacSimWithOrderedLists(docID1, docID2)
-        distance = 1 - jaccard
-        jaccardDict[pair] = jaccard
-        distanceDict[pair] = distance
+        if selectedSimilarityMethod == 1:
+            jaccard = MyJacSimWithOrderedLists(docID1, docID2)
+            distance = 1 - jaccard
+            jaccardSimList.append(jaccard)
+            distanceDict[pair] = distance
+        elif selectedSimilarityMethod == 0:
+            sigSim = MySigSim(docID1, docID2, numPermutations)
+            distance = 1 - sigSim
+            sigSimList.append(sigSim)
+            distanceDict[pair] = distance
 
-    print(f"{font.WARNING}\nJaccard Similarity for all pairs from LSH:\n{font.ENDC}", jaccardDict)
-    print(f"{font.WARNING}\nDistance for all pairs from LSH:\n{font.ENDC}", distanceDict)
+    orderedDocsDistanceDict = {k: v for k, v in sorted(distanceDict.items(), key=lambda item: item[1])}
+
+    n = 0
+    i = 0
+
+    # Get the first N Neighbors from Distance Dictionary
+    for pair in orderedDocsDistanceDict:
+        if selectedSimilarityMethod == 1:
+            if n < numNeighbors:
+                myNeighborsPairsDict[pair] = jaccardSimList[i]
+                n += 1
+                i += 1
+        elif selectedSimilarityMethod == 0:
+            if n < numNeighbors:
+                myNeighborsPairsDict[pair] = sigSimList[i]
+                n += 1
+                i += 1
+    i = 0
+
+    return distanceDict
 
 
-def AverageSimilarity(docID):
+def AverageSimilarityForADocument(docID):
+    global selectedSimilarityMethod
+
     jaccardList = []
+    sigList = []
+
     for doc in range(1, numDocuments + 1):
         if docID != doc:
-            jaccardList.append(MyJacSimWithOrderedLists(docID, doc))
+            if selectedSimilarityMethod == 1:
+                jaccardList.append(MyJacSimWithOrderedLists(docID, doc))
+            elif selectedSimilarityMethod == 0:
+                sigList.append(MySigSim(docID, doc, numPermutations))
 
-    avg = sum(jaccardList) / numDocuments
+    if selectedSimilarityMethod == 1:
+        avg = sum(jaccardList)/numDocuments
+    elif selectedSimilarityMethod == 0:
+        avg = sum(sigList)/numDocuments
+
+    return avg
+
+
+def AverageSimilarityFromNearestNeighborsLSH():
+    global myNeighborsPairsDict
+
+    avg = sum(myNeighborsPairsDict.values())/numNeighbors
 
     return avg
 
@@ -486,6 +548,7 @@ def LSH(rowsPerBand):
     return pairs
 
 
+"""
 def main():
     MyReadDataRoutine()
     print(f"{font.WARNING}MyReadDataRoutine:{font.ENDC}")
@@ -517,3 +580,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+"""
