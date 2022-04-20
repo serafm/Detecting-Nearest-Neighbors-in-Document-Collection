@@ -3,9 +3,31 @@ import os
 import time
 import random
 import collections
-from termcolor import colored
 
-global docDict, numDocuments, wordsDict, SIG, file_path, readMsg, myNeighborsDict, docDistance, K, permutationFileNames, hashLSH, numBands, rowsPerBand, pairs
+
+"""
+1. MyReadDataRoutine(): Opens the data file and reads the number of documents you want 
+   to find the Similarity-Nearest Neighbors 
+2. MyJacSimWithSets(): Calculate the Jaccard Similarity of 2 Documents with a double for-loop
+3. MyJacSimWithOrderedLists(): Calculate the Jaccard Similarity of 2 Documents 
+   with pointers (faster method than a double for-loop) 
+4. RandomHashForSignatures(): This function creates Random Hashes (Permutations) for the signatures
+   and save them in a txt file
+5. MyMinHash(): Create a Signature List of Lists with Rows: WordIDs and Columns: DocIDs
+6. MySigSim(): Calculate the Similarity of 2 Signatures row to row
+7. AverageSimilarityOfAllDocumentsWithBruteForce(): Find the Average Similarity of all documents you 
+   selected from the Average Similarity of every documents from Brute Force method
+8. BruteForce(): Find the Average Similarity of nearest Neighbors
+9. CalculatePairsSimilarityFromLSH(): Calculate the Similarity of pairs that LSH found
+10. AverageSimilarity(): Just the Average Similarity of all Documents
+11. LSH(): Find similar documents using bands and buckets and extract pairs of documents that might be very similar
+"""
+
+
+global docDict, numDocuments, wordsDict, SIG, file_path
+global readMsg, myNeighborsDict, docDistance, K, permutationFileNames
+global hashLSH, numBands, rowsPerBand, pairs, elapsed_time_for_MyMinHash, jaccardSimList
+global elapsed_time_for_SigSim, elapsed_time_for_jacSimWithOrderedLists, elapsed_time_for_jacSimWithSets
 
 # Dictionary key:docID, value:wordIDs
 docDict = dict()
@@ -20,7 +42,7 @@ myNeighborsDict = dict()
 docDistance = dict()
 
 # Number of documents to read
-numDocuments = 20
+# numDocuments = 20
 
 # Number of permutation
 K = 20
@@ -30,6 +52,9 @@ SIG = []
 
 # List of pairs from LSH
 pairs = []
+
+# Jaccard Similarity List for Brute Force
+jaccardSimList = []
 
 
 # Fonts and Colors for output terminal
@@ -56,14 +81,15 @@ hashLSH = create_random_hash_function()
 
 
 # Function to read the documents
-def MyReadDataRoutine():
-    global numDocuments, readMsg, wordsDict
+def MyReadDataRoutine(filepath, numDocuments):
+
+    global readMsg, wordsDict
 
     # get the start time
     st = time.time()
 
     # filepath
-    filepath = "data/DATA_1-docword.enron.txt"
+    # filepath = "data/DATA_1-docword.enron.txt"
 
     # open file
     file = open(filepath)
@@ -132,12 +158,17 @@ def MyReadDataRoutine():
     elapsed_time = et - st
     timeTaken = str(float(elapsed_time))
 
-    readMsg = str('Read ' + str(numDocuments) + ' documents and added them in dictionary. Execution time: ' + str(timeTaken) + ' seconds for MyReadDataRoutine')
+    readMsg = str('Read ' + str(numDocuments) + ' documents and added them in dictionary.\nExecution time: ' + str(timeTaken) + ' seconds')
     # print("DocDict:\n", docDict)
 
 
 # Jaccard Similarity of 2 Documents with double for-loop
 def MyJacSimWithSets(docID1, docID2):
+    global elapsed_time_for_jacSimWithSets
+
+    # get the start time
+    st = time.time()
+
     intersectionCounter = 0
     # make frozensets for the 2 docs
     doc1set = frozenset(docDict.get(docID1))
@@ -153,11 +184,23 @@ def MyJacSimWithSets(docID1, docID2):
     # Jaccard Similarity
     jacSimWithSets = intersectionCounter / unionCounter
 
+    # get the end time
+    et = time.time()
+
+    # get the execution time
+    elapsed_time = et - st
+    elapsed_time_for_jacSimWithSets = "Execution time for Jaccard Similarity With Ordered Lists: " + str(elapsed_time)
+
     return jacSimWithSets
 
 
 # Jaccard Similarity of 2 Documents with pointers
 def MyJacSimWithOrderedLists(docID1, docID2):
+    global elapsed_time_for_jacSimWithOrderedLists
+
+    # get the start time
+    st = time.time()
+
     pos1 = 0
     pos2 = 0
     intersectionCounter = 0
@@ -182,11 +225,18 @@ def MyJacSimWithOrderedLists(docID1, docID2):
     # Jaccard Similarity
     jacSimWithOrderedLists = intersectionCounter / unionCounter
 
+    # get the end time
+    et = time.time()
+
+    # get the execution time
+    elapsed_time = et - st
+    elapsed_time_for_jacSimWithOrderedLists = "Execution time for Jaccard Similarity With Ordered Lists: " + str(elapsed_time)
+
     return jacSimWithOrderedLists
 
 
 # Random Hash Function for Permutations
-def RandomHashForSignatures():
+def RandomHashForSignatures(K):
     w = len(wordsDict)
     permutationFiles = open("permutationFiles.txt", "w")
 
@@ -207,8 +257,8 @@ def RandomHashForSignatures():
 
 
 # Create the Signature List
-def MyMinHash(wordsDict, K):
-    global numDocuments, SIG, permutationFileNames
+def MyMinHash(wordsDict, K, numDocuments):
+    global SIG, permutationFileNames, elapsed_time_for_MyMinHash
 
     # get the start time
     st = time.time()
@@ -258,13 +308,19 @@ def MyMinHash(wordsDict, K):
 
     # get the execution time
     elapsed_time = et - st
-    print('Execution time:', '%.3f' % elapsed_time, 'seconds for MyMinHash \n')
-    print(f"{font.WARNING}Signature table:{font.ENDC}\n", SIG, "\n")
+    elapsed_time_for_MyMinHash = "Execution time for signatures list creation: " + str(elapsed_time)
+    # print('Execution time:', '%.3f' % elapsed_time, 'seconds for MyMinHash \n')
+    # print(f"{font.WARNING}Signature table:{font.ENDC}\n", SIG, "\n")
+
+    return SIG
 
 
 # Calculate Similarity from Signatures
 def MySigSim(docID1, docID2, numPermutations):
-    global K
+    # get the start time
+    st = time.time()
+
+    global K, elapsed_time_for_SigSim
     count = 0
     docSig1 = SIG[docID1 - 1]
     docSig2 = SIG[docID2 - 1]
@@ -273,7 +329,14 @@ def MySigSim(docID1, docID2, numPermutations):
         if docSig1[i] == docSig2[i]:
             count += 1
 
-    sigSim = count / (len(docSig1) + len(docSig2))
+    sigSim = count/K
+
+    # get the end time
+    et = time.time()
+
+    # get the execution time
+    elapsed_time = et - st
+    elapsed_time_for_SigSim = "Execution time for 2 Signatures Similarity: " + str(elapsed_time)
 
     return sigSim
 
@@ -293,10 +356,9 @@ def AverageSimilarityOfAllDocumentsWithBruteForce():
 
 
 def BruteForce(docID):
-    global myNeighborsDict, numDocuments
+    global myNeighborsDict, numDocuments, jaccardSimList
 
     docsDistanceDict = dict()
-    jaccardSimList = []
     numNeighbors = 5
 
     # get the start time
@@ -363,8 +425,8 @@ def AverageSimilarity(docID):
     return avg
 
 
-def LSH(SIG, rowsPerBand):
-    global numBands, pairs
+def LSH(rowsPerBand):
+    global numBands, pairs, SIG
 
     # Number of Bands
     numBands = int(K / rowsPerBand)
