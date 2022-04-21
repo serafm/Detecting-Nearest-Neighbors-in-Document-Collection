@@ -415,7 +415,6 @@ def calculateJaccardSimilaritiesOrSigSim(docID1Text, docID2Text, numPermutations
 
 
 
-
 def main():
     GUI()
 

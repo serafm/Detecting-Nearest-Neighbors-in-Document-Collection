@@ -1,9 +1,6 @@
-import linecache
-import os
 import time
 import random
 import collections
-import Gui as user
 
 
 """
@@ -46,27 +43,11 @@ docDistance = dict()
 # Random Hash List
 randomHashList = [[]]
 
-# Number of permutation
-# K = 20
-
 # List of Signatures
 SIG = []
 
 # List of pairs from LSH
 pairs = []
-
-
-# Fonts and Colors for output terminal
-class font:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
 
 
 # Random Hash Function
@@ -76,6 +57,7 @@ def create_random_hash_function(p=2 ** 33 - 355, m=2 ** 32 - 1):
     return lambda x: 1 + (((a * x + b) % p) % m)
 
 
+# create random hash for LSH buckets
 hashLSH = create_random_hash_function()
 
 
@@ -237,25 +219,16 @@ def MyJacSimWithOrderedLists(docID1, docID2):
 # Random Hash Function for Permutations
 def RandomHashForSignatures(K):
     w = len(wordsDict)
-    # permutationFiles = open("permutationFiles.txt", "w")
 
     for num in range(1, K + 1):
         h = create_random_hash_function()
         randomHash = {x: h(x) for x in range(w)}
         myHashKeysOrderedByValues = sorted(randomHash, key=randomHash.get)
         myHash = {myHashKeysOrderedByValues[x]: x for x in range(w)}
-        randomHashList.append(myHash)
+        keys = list(myHash.keys())
+        keys.remove(0)
+        randomHashList.append(keys)
 
-        """
-        filename = "randomHash" + str(num) + ".txt"
-        if os.path.exists(filename):
-            open(filename).flush()
-        permutationFiles.write(filename + "\n")
-        f = open(filename, "w")
-        for i in myHash:
-            string = str(i) + ":" + str(myHash[i]) + "\n"
-            f.write(string)
-        """
     randomHashList.pop(0)
 
 
@@ -266,47 +239,25 @@ def MyMinHash(wordsDict, K, numDocuments):
     # get the start time
     st = time.time()
 
-    # Open the file with the randomHash file names
-    # permutationFiles = open("permutationFiles.txt")
-
-    # Add the file names in a list
-    # permutationFileNames = permutationFiles.read().split("\n")
-
-    # remove the last element (is an empty string)
-    # permutationFileNames.pop(-1)
-
-    # randomHash = []
-    # randomHashList = [[]]
-
-    """
-    for hash in range(K):
-        for i in range(1, len(wordsDict)):
-            randomHash.append(
-                linecache.getline(str(permutationFileNames[hash]), i).replace("\n", "").replace(str(":" + str(i - 1)), ""))
-        randomHashList.append(randomHash)
-        randomHash = []
-    """
-
-    # randomHashList.pop(0)
-
-    positionOfList = 1
-
     # Initialise SIG List
     for col in range(numDocuments):
         SIG.append([])
         for i in range(K):
             SIG[col].append(1000000)
 
-    for word in wordsDict:
-        list = wordsDict.get(word)
-        for doc in list:
-            for j in range(K):
-                for i in range(len(randomHashList[0])):
-                    if positionOfList == int(randomHashList[j][i]):
-                        if (i + 1) < SIG[doc - 1][j]:
-                            SIG[doc - 1][j] = i + 1
-                            break
-        positionOfList += 1
+    wordsDictAsListsOfValues = list(wordsDict.values())
+    r = 1
+
+    for row in range(len(wordsDictAsListsOfValues)):
+        tempList = wordsDictAsListsOfValues[row]
+        for col in range(len(tempList)):
+            for k in range(len(randomHashList)):
+                if row == len(wordsDictAsListsOfValues) - 1:
+                    r = len(wordsDictAsListsOfValues) - 1
+                position = randomHashList[k].index(r) + 1
+                if position < SIG[tempList[col] - 1][k]:
+                    SIG[tempList[col] - 1][k] = position
+        r += 1
 
     # get the end time
     et = time.time()
@@ -314,8 +265,6 @@ def MyMinHash(wordsDict, K, numDocuments):
     # get the execution time
     elapsed_time = et - st
     elapsed_time_for_MyMinHash = "Execution time for signatures list creation: " + str(elapsed_time)
-    # print('Execution time:', '%.3f' % elapsed_time, 'seconds for MyMinHash \n')
-    # print(f"{font.WARNING}Signature table:{font.ENDC}\n", SIG, "\n")
 
     return SIG
 
@@ -367,7 +316,6 @@ def BruteForce(docID):
     docsDistanceDict = dict()
     jaccardSimList = []
     sigSimList = []
-
 
     # get the start time
     st = time.time()
@@ -511,11 +459,9 @@ def LSH(rowsPerBand):
 
         # hashLSH
         LSHdicts = {x: hashLSH(tempDict[x]) for x in tempDict}
-        # print(randomHash)
 
         # Sort the dictionary
         ordered = sorted(LSHdicts, key=LSHdicts.get)
-        # print(ordered)
 
         # add docIDs in buckets (Sera's Algorithm)
         for key in ordered:
@@ -525,8 +471,6 @@ def LSH(rowsPerBand):
             temp = LSHdicts[key]
             LSHdicts[key] = bucket
             bucket += 1
-
-        # print(colored("DocIDs:Bucket for Band:" + str(b+1), 'green') + "\n", LSHdicts)
 
         # Find pairs
         for i in range(len(ordered) - 1):
@@ -546,38 +490,3 @@ def LSH(rowsPerBand):
     pairs = sorted(pairs)
 
     return pairs
-
-
-"""
-def main():
-    MyReadDataRoutine()
-    print(f"{font.WARNING}MyReadDataRoutine:{font.ENDC}")
-    print(readMsg, "\n")
-
-    print(f"{font.WARNING}MyJacSimWithSets for docs 1,2:{font.ENDC}")
-    print("Jaccard: ", MyJacSimWithSets(1, 2), "\n")
-    # print("Jaccard: ", MyJacSimWithOrderedLists(1, 2))
-
-    # RandomHashForSignatures()
-
-    print(f"{font.WARNING}MyMinHash:{font.ENDC}")
-    MyMinHash(wordsDict, K)
-
-    print(f"{font.WARNING}MySigSim for docs 1,2:{font.ENDC}")
-    print("Sig: ", MySigSim(1, 2, 20))
-
-    print(f"{font.WARNING}\nBruteForce DocID=1 :{font.ENDC}")
-    print(f"{font.WARNING}Average Similarity:{font.ENDC}", BruteForce(1), "\n")
-
-    print(f"{font.WARNING}Average Similarity for all documents:{font.ENDC}",
-          AverageSimilarityOfAllDocumentsWithBruteForce())
-
-    print(f"{font.WARNING}\nLSH:{font.ENDC}")
-    print(f"{font.WARNING}\nPairs:{font.ENDC}", LSH(SIG, 1), "\n")
-
-    print(CalculatePairsSimilarityFromLSH())
-
-
-if __name__ == "__main__":
-    main()
-"""
