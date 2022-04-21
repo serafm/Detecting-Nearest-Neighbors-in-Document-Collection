@@ -69,12 +69,10 @@ def MyReadDataRoutine(filepath, numDocuments):
     # get the start time
     st = time.time()
 
-    # filepath
-    # filepath = "data/DATA_1-docword.enron.txt"
-
     # open file
     file = open(filepath)
 
+    # Counters for docs
     docs = 1
     previousDocID = 1
 
@@ -234,7 +232,7 @@ def RandomHashForSignatures(K):
 
 # Create the Signature List
 def MyMinHash(wordsDict, K, numDocuments):
-    global SIG, permutationFileNames, elapsed_time_for_MyMinHash
+    global SIG, permutationFileNames, elapsed_time_for_MyMinHash, randomHashList
 
     # get the start time
     st = time.time()
@@ -296,20 +294,6 @@ def MySigSim(docID1, docID2, numPermutations):
     return sigSim
 
 
-# Find the nearest neighbors from a document
-def AverageSimilarityOfAllDocumentsWithBruteForce():
-    global numDocuments
-    AvgSim = []
-
-    for i in range(1, numDocuments + 1):
-        avg = BruteForce(i)
-        AvgSim.append(avg)
-
-    AverageSim = (1/numDocuments)*sum(AvgSim)
-
-    return AverageSim
-
-
 def BruteForce(docID):
     global myNeighborsDict, numDocuments, elapsed_time_bruteForce, numNeighbors, numPermutations, selectedSimilarityMethod
 
@@ -358,81 +342,18 @@ def BruteForce(docID):
     return AvgSimOfNeighbors
 
 
-def CalculatePairsDistanceFromLSH():
-    global rowsPerBand, numBands, pairs, myNeighborsPairsDict, numNeighbors, selectedSimilarityMethod
+# Find the nearest neighbors from a document
+def AverageSimilarityOfAllDocumentsWithBruteForce():
+    global numDocuments
+    AvgSim = []
 
-    distanceDict = dict()
-    jaccardSimList = []
-    sigSimList = []
+    for i in range(1, numDocuments + 1):
+        avg = BruteForce(i)
+        AvgSim.append(avg)
 
-    # threshold
-    # s = pow((1/numBands), (1/rowsPerBand))
+    AverageSim = (1/numDocuments)*sum(AvgSim)
 
-    # Find similarity with one of the following methods
-    for pair in pairs:
-        p = list(pair)
-        docID1 = p[0]
-        docID2 = p[1]
-        if selectedSimilarityMethod == 1:
-            jaccard = MyJacSimWithOrderedLists(docID1, docID2)
-            distance = 1 - jaccard
-            jaccardSimList.append(jaccard)
-            distanceDict[pair] = distance
-        elif selectedSimilarityMethod == 0:
-            sigSim = MySigSim(docID1, docID2, numPermutations)
-            distance = 1 - sigSim
-            sigSimList.append(sigSim)
-            distanceDict[pair] = distance
-
-    orderedDocsDistanceDict = {k: v for k, v in sorted(distanceDict.items(), key=lambda item: item[1])}
-
-    n = 0
-    i = 0
-
-    # Get the first N Neighbors from Distance Dictionary
-    for pair in orderedDocsDistanceDict:
-        if selectedSimilarityMethod == 1:
-            if n < numNeighbors:
-                myNeighborsPairsDict[pair] = jaccardSimList[i]
-                n += 1
-                i += 1
-        elif selectedSimilarityMethod == 0:
-            if n < numNeighbors:
-                myNeighborsPairsDict[pair] = sigSimList[i]
-                n += 1
-                i += 1
-    i = 0
-
-    return distanceDict
-
-
-def AverageSimilarityForADocument(docID):
-    global selectedSimilarityMethod
-
-    jaccardList = []
-    sigList = []
-
-    for doc in range(1, numDocuments + 1):
-        if docID != doc:
-            if selectedSimilarityMethod == 1:
-                jaccardList.append(MyJacSimWithOrderedLists(docID, doc))
-            elif selectedSimilarityMethod == 0:
-                sigList.append(MySigSim(docID, doc, numPermutations))
-
-    if selectedSimilarityMethod == 1:
-        avg = sum(jaccardList)/numDocuments
-    elif selectedSimilarityMethod == 0:
-        avg = sum(sigList)/numDocuments
-
-    return avg
-
-
-def AverageSimilarityFromNearestNeighborsLSH():
-    global myNeighborsPairsDict
-
-    avg = sum(myNeighborsPairsDict.values())/numNeighbors
-
-    return avg
+    return AverageSim
 
 
 def LSH(rowsPerBand):
@@ -490,3 +411,82 @@ def LSH(rowsPerBand):
     pairs = sorted(pairs)
 
     return pairs
+
+
+def CalculatePairsDistanceFromLSH():
+    global rowsPerBand, numBands, pairs, myNeighborsPairsDict, numNeighbors, selectedSimilarityMethod
+
+    distanceDict = dict()
+    jaccardSimList = []
+    sigSimList = []
+
+    # threshold
+    # s = pow((1/numBands), (1/rowsPerBand))
+
+    # Find similarity with one of the following methods
+    for pair in pairs:
+        p = list(pair)
+        docID1 = p[0]
+        docID2 = p[1]
+        if selectedSimilarityMethod == 1:
+            jaccard = MyJacSimWithOrderedLists(docID1, docID2)
+            distance = 1 - jaccard
+            jaccardSimList.append(jaccard)
+            distanceDict[pair] = distance
+        elif selectedSimilarityMethod == 0:
+            sigSim = MySigSim(docID1, docID2, numPermutations)
+            distance = 1 - sigSim
+            sigSimList.append(sigSim)
+            distanceDict[pair] = distance
+
+    orderedDocsDistanceDict = {k: v for k, v in sorted(distanceDict.items(), key=lambda item: item[1])}
+
+    n = 0
+    i = 0
+
+    # Get the first N Neighbors from Distance Dictionary
+    for pair in orderedDocsDistanceDict:
+        if selectedSimilarityMethod == 1:
+            if n < numNeighbors:
+                myNeighborsPairsDict[pair] = jaccardSimList[i]
+                n += 1
+                i += 1
+        elif selectedSimilarityMethod == 0:
+            if n < numNeighbors:
+                myNeighborsPairsDict[pair] = sigSimList[i]
+                n += 1
+                i += 1
+    i = 0
+
+    return distanceDict
+
+
+def AverageSimilarityForADocument(docID):
+    global selectedSimilarityMethod
+
+    jaccardList = []
+    sigList = []
+
+    # Find Jaccard Similarity or Signature of a docID with all the other docIDs
+    for doc in range(1, numDocuments + 1):
+        if docID != doc:
+            if selectedSimilarityMethod == 1:
+                jaccardList.append(MyJacSimWithOrderedLists(docID, doc))
+            elif selectedSimilarityMethod == 0:
+                sigList.append(MySigSim(docID, doc, numPermutations))
+
+    # Find average similarity for a docID
+    if selectedSimilarityMethod == 1:
+        avg = sum(jaccardList)/numDocuments
+    elif selectedSimilarityMethod == 0:
+        avg = sum(sigList)/numDocuments
+
+    return avg
+
+
+def AverageSimilarityFromNearestNeighborsLSH():
+    global myNeighborsPairsDict
+
+    avg = sum(myNeighborsPairsDict.values())/numNeighbors
+
+    return avg
