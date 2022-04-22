@@ -3,7 +3,7 @@ import time
 from tkinter import *
 from tkinter.ttk import *
 from tkinter.filedialog import askopenfile
-import methods
+import Methods
 
 global numDocuments, filepath, numNeighbors, K, jacSimCheck, sigSimCheck
 global bruteForceCheck, LSHCheck, mainWindow, rowsPerBandCheck, rowsPerBand
@@ -24,7 +24,7 @@ def GUI():
     rowsPerBandCheck = IntVar()
 
     mainWindow.title('Detect Nearest Neighbors from Document Collection')
-    mainWindow.geometry('1920x1080')
+    mainWindow.geometry('800x600')
 
     uploadFileLabel = Label(mainWindow, text='Upload file to analyze')
     uploadFileLabel.grid(row=0, column=0, padx=10)
@@ -129,10 +129,10 @@ def ReadDocuments(numDocumentsTextBox, numNeighborsTextBox, numPermutationsTextB
     numDocuments = numDocumentsTextBox.get("1.0", END)
     numNeighbors = numNeighborsTextBox.get("1.0", END)
     K = numPermutationsTextBox.get("1.0", END)
-    methods.K = int(K)
-    methods.numDocuments = int(numDocuments)
-    methods.numNeighbors = int(numNeighbors)
-    methods.numPermutations = int(K)
+    Methods.K = int(K)
+    Methods.numDocuments = int(numDocuments)
+    Methods.numNeighbors = int(numNeighbors)
+    Methods.numPermutations = int(K)
 
     error = Label(mainWindow, text='Error. Number of Neighbors must be at least 5!', foreground='red')
 
@@ -145,19 +145,19 @@ def ReadDocuments(numDocumentsTextBox, numNeighborsTextBox, numPermutationsTextB
         K = numPermutationsTextBox.get("1.0", END)
 
         # execute MyReadDataRoutine()
-        methods.MyReadDataRoutine(filepath, int(numDocuments))
+        Methods.MyReadDataRoutine(filepath, int(numDocuments))
         # Time taken for read Docs
-        Label(mainWindow, text=methods.readMsg, foreground='blue').grid(row=8, column=0)
+        Label(mainWindow, text=Methods.readMsg, foreground='blue').grid(row=8, column=0)
 
         # execute RandomHashForSignatures() only one time
-        methods.RandomHashForSignatures(int(K))
+        Methods.RandomHashForSignatures(int(K))
 
         if onetime:
             # execute MyMinHash() create Signatures list
-            wordsDict = methods.wordsDict
-            methods.MyMinHash(wordsDict, int(K), int(numDocuments))
+            wordsDict = Methods.wordsDict
+            Methods.MyMinHash(wordsDict, int(K), int(numDocuments))
             # Time taken for SIG creation
-            Label(mainWindow, text=methods.elapsed_time_for_MyMinHash, foreground='blue').grid(row=9, column=0)
+            Label(mainWindow, text=Methods.elapsed_time_for_MyMinHash, foreground='blue').grid(row=9, column=0)
             onetime = False
 
 
@@ -217,30 +217,30 @@ def startLSH(rowsPerBandTextBox):
     # IF user checks the box to let LSH choose rows per band ELSE get the input rows from user
     if rowsPerBandCheck.get() == 1:
         rowsPerBand = int(K)/4
-        methods.rowsPerBand = rowsPerBand
+        Methods.rowsPerBand = rowsPerBand
     elif rowsPerBandTextBox.get("1.0", END) is not None:
         rowsPerBand = rowsPerBandTextBox.get("1.0", END)
-        methods.rowsPerBand = int(rowsPerBand)
+        Methods.rowsPerBand = int(rowsPerBand)
 
     # LSH method with Jaccard Similarity OR Signatures Similarity (Question: 4a.)
     if jacSimCheck.get() == 1:
 
-        methods.selectedSimilarityMethod = 1
+        Methods.selectedSimilarityMethod = 1
 
         # get the start time
         st = time.time()
 
-        methods.LSH(int(rowsPerBand))
+        Methods.LSH(int(rowsPerBand))
 
-        if methods.pairs == []:
+        if Methods.pairs == []:
             Label(mainWindow, text='No Pairs Found').grid(row=15, column=1)
         else:
 
             # Calculate Distance for pairs (Question 4a.)
-            methods.CalculatePairsDistanceFromLSH()
+            Methods.CalculatePairsDistanceFromLSH()
 
             # Calculate AvgSim for nearest neighbors (Question 4b.)
-            avgSim = methods.AverageSimilarityFromNearestNeighborsLSH()
+            avgSim = Methods.AverageSimilarityFromNearestNeighborsLSH()
 
             # get the end time
             et = time.time()
@@ -257,22 +257,22 @@ def startLSH(rowsPerBandTextBox):
 
     elif sigSimCheck.get() == 1:
 
-        methods.selectedSimilarityMethod = 0
+        Methods.selectedSimilarityMethod = 0
 
         # get the start time
         st = time.time()
 
-        methods.LSH(int(rowsPerBand))
+        Methods.LSH(int(rowsPerBand))
 
-        if methods.pairs == []:
+        if Methods.pairs == []:
             Label(mainWindow, text='No Pairs Found').grid(row=15, column=1)
         else:
 
             # Calculate Distance for pairs (Question 4a.)
-            methods.CalculatePairsDistanceFromLSH()
+            Methods.CalculatePairsDistanceFromLSH()
 
             # Calculate AvgSim for nearest neighbors (Question 4b.)
-            avgSim = methods.AverageSimilarityFromNearestNeighborsLSH()
+            avgSim = Methods.AverageSimilarityFromNearestNeighborsLSH()
 
             # get the end time
             et = time.time()
@@ -294,18 +294,18 @@ def startBruteForce():
     # Use Brute Force Jaccard Sim method (Question 4a.)
     if jacSimCheck.get() == 1:
 
-        methods.selectedSimilarityMethod = 1
+        Methods.selectedSimilarityMethod = 1
 
         # get the start time
         st = time.time()
 
         for i in range(1, int(numDocuments)+1):
-            methods.BruteForce(i)
+            Methods.BruteForce(i)
             # nearest neighbors
-            methods.myNeighborsDict
+            Methods.myNeighborsDict
 
         # Calculate AvgSim (Question 4b.)
-        avgSim = methods.AverageSimilarityOfAllDocumentsWithBruteForce()
+        avgSim = Methods.AverageSimilarityOfAllDocumentsWithBruteForce()
 
         # get the end time
         et = time.time()
@@ -322,18 +322,18 @@ def startBruteForce():
     # Use Brute Force SigSim method (Question 4a.)
     elif sigSimCheck.get() == 1:
 
-        methods.selectedSimilarityMethod = 0
+        Methods.selectedSimilarityMethod = 0
 
         # get the start time
         st = time.time()
 
         for i in range(1, int(numDocuments)+1):
-            methods.BruteForce(i)
+            Methods.BruteForce(i)
             # nearest neighbors
-            methods.myNeighborsDict
+            Methods.myNeighborsDict
 
         # Calculate AvgSim (Question 4b.)
-        avgSim = methods.AverageSimilarityOfAllDocumentsWithBruteForce()
+        avgSim = Methods.AverageSimilarityOfAllDocumentsWithBruteForce()
 
         # get the end time
         et = time.time()
@@ -381,11 +381,11 @@ def calculateJaccardSimilaritiesOrSigSim(docID1Text, docID2Text, numPermutations
 
     docID1 = int(docID1Text.get("1.0", END))
     docID2 = int(docID2Text.get("1.0", END))
-    numPermutations = int(numPermutationsText.get("1.0", END))
+    numPermutations = numPermutationsText.get("1.0", END)
 
-    jac1 = methods.MyJacSimWithOrderedLists(docID1, docID2)
-    jac2 = methods.MyJacSimWithSets(docID1, docID2)
-    sigSim = methods.MySigSim(docID1, docID2, numPermutations)
+    jac1 = Methods.MyJacSimWithOrderedLists(docID1, docID2)
+    jac2 = Methods.MyJacSimWithSets(docID1, docID2)
+    sigSim = Methods.MySigSim(docID1, docID2, int(numPermutations))
 
     jacLabel1 = Label(jaccardWindow, text='Jaccard Similarity with Ordered Lists: ' + str(jac1))
     jacLabel2 = Label(jaccardWindow, text='Jaccard Similarity with Sets:' + str(jac2))
@@ -399,11 +399,11 @@ def calculateJaccardSimilaritiesOrSigSim(docID1Text, docID2Text, numPermutations
     isClicked = True
 
     jacLabel1 = Label(jaccardWindow, text='Jaccard Similarity with Ordered Lists: ' + str(jac1))
-    Label(jaccardWindow, text=methods.elapsed_time_for_jacSimWithOrderedLists).grid(row=5, column=0)
+    Label(jaccardWindow, text=Methods.elapsed_time_for_jacSimWithOrderedLists).grid(row=5, column=0)
     jacLabel2 = Label(jaccardWindow, text='Jaccard Similarity with Sets:' + str(jac2))
-    Label(jaccardWindow, text=methods.elapsed_time_for_jacSimWithSets).grid(row=7, column=0)
+    Label(jaccardWindow, text=Methods.elapsed_time_for_jacSimWithSets).grid(row=7, column=0)
     sigSimLabel = Label(jaccardWindow, text='Signature Similarity: ' + str(sigSim))
-    Label(jaccardWindow, text=methods.elapsed_time_for_SigSim).grid(row=9, column=0)
+    Label(jaccardWindow, text=Methods.elapsed_time_for_SigSim).grid(row=9, column=0)
 
 
     jacLabel1.config(font=("Arial", 8, "bold"))
